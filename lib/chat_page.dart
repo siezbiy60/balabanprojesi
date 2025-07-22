@@ -64,25 +64,26 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
+    // Mesaj metnini sakla ve hemen temizle
+    final messageText = _messageController.text.trim();
+    _messageController.clear();
+
     try {
       final messageData = {
         'senderId': user.uid,
         'receiverId': widget.receiverId,
-        'text': _messageController.text.trim(),
+        'text': messageText,
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
         'deletedFor': [],
-        'participants': [user.uid, widget.receiverId], // Add this line
       };
       print('Mesaj verisi: $messageData');
       final docRef = await _firestore.collection('messages').add(messageData);
       print('Mesaj eklendi, ID: ${docRef.id}, Gönderen: ${user.uid}, Alıcı: ${widget.receiverId}');
-      _messageController.clear();
 
-      // Mesajın hemen görünmesi için akışı yenile
-      setState(() {});
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
+      // Scroll işlemini StreamBuilder güncellemesinden sonra yap
+      Future.delayed(Duration(milliseconds: 100), () {
+        if (mounted && _scrollController.hasClients) {
           _scrollController.animateTo(
             0.0,
             duration: Duration(milliseconds: 300),
@@ -93,6 +94,8 @@ class _ChatPageState extends State<ChatPage> {
     } catch (e) {
       print('Mesaj gönderme hatası: $e, Gönderen: ${user.uid}, Alıcı: ${widget.receiverId}');
       if (mounted) {
+        // Hata durumunda mesajı geri yükle
+        _messageController.text = messageText;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Mesaj gönderilemedi: $e')),
         );
@@ -179,7 +182,8 @@ class _ChatPageState extends State<ChatPage> {
     print('Mesaj akışı başlatılıyor - Kullanıcı: ${user.uid}, Alıcı: ${widget.receiverId}');
     return _firestore
         .collection('messages')
-        .where('participants', arrayContains: user.uid)  // Change this line
+        .where('senderId', whereIn: [user.uid, widget.receiverId])
+        .where('receiverId', whereIn: [user.uid, widget.receiverId])
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -187,18 +191,17 @@ class _ChatPageState extends State<ChatPage> {
       return snapshot.docs.where((doc) {
         final data = doc.data();
         final deletedFor = List<String>.from(data['deletedFor'] ?? []);
-        final participants = List<String>.from(data['participants'] ?? []);
-
-        // Filter for this specific conversation
-        final isRelevant = participants.contains(widget.receiverId);
-        final isNotDeleted = !deletedFor.contains(user.uid);
-
-        return isRelevant && isNotDeleted;
+        if (deletedFor.contains(user.uid)) {
+          print('Mesaj filtrelendi - ID: ${doc.id}, deletedFor: $deletedFor');
+          return false;
+        }
+        return true;
       }).toList();
     }).handleError((error) {
       print('Mesaj akışı hatası: $error');
     });
   }
+
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser!;
@@ -289,7 +292,6 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
               stream: getMessagesStream(),
-              initialData: [], // Boş liste ile başlat
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   print('ChatPage: Veri yükleniyor...');
