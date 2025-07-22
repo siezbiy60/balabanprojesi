@@ -2,166 +2,191 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:rxdart/rxdart.dart';
 import 'chat_page.dart';
 
-class MessagesPage extends StatelessWidget {
+class MessagesPage extends StatefulWidget {
+  @override
+  _MessagesPageState createState() => _MessagesPageState();
+}
+
+class _MessagesPageState extends State<MessagesPage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late Stream<QuerySnapshot> _messagesStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  void _loadMessages() {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    _messagesStream = _firestore
+        .collection('messages')
+        .where('participants', arrayContains: currentUserId)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  Future<Map<String, dynamic>> _getUserData(String userId) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('users').doc(userId).get();
+      return doc.data() as Map<String, dynamic>? ?? {
+        'username': 'Bilinmeyen Kullanıcı',
+        'profileImageUrl': null
+      };
+    } catch (e) {
+      print('Kullanıcı verisi çekme hatası: $e');
+      return {'username': 'Bilinmeyen Kullanıcı', 'profileImageUrl': null};
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser!;
-    print('MessagesPage Kullanıcı ID: ${user.uid}');
-
-    final sentMessagesStream = FirebaseFirestore.instance
-        .collection('messages')
-        .where('senderId', isEqualTo: user.uid)
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-
-    final receivedMessagesStream = FirebaseFirestore.instance
-        .collection('messages')
-        .where('receiverId', isEqualTo: user.uid)
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-
-    final mergedStream = CombineLatestStream.list<QuerySnapshot<Map<String, dynamic>>>([
-      sentMessagesStream,
-      receivedMessagesStream,
-    ]);
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Giriş yapılmamış'),
+              ElevatedButton(
+                onPressed: () => Navigator.pushNamed(context, '/login'),
+                child: Text('Giriş Yap'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mesajlar', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
-        backgroundColor: Theme.of(context).primaryColor,
+        title: Text('Mesajlar', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blue,
         elevation: 0,
       ),
-      body: StreamBuilder<List<QuerySnapshot<Map<String, dynamic>>>>(
-        stream: mergedStream,
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _messagesStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
+
           if (snapshot.hasError) {
-            print('Mesajlar sayfası hatası: ${snapshot.error.toString()}');
-            return Center(child: Text('Hata: ${snapshot.error.toString()}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error, color: Colors.red, size: 48),
+                  SizedBox(height: 16),
+                  Text('Hata oluştu: ${snapshot.error}'),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadMessages,
+                    child: Text('Yenile'),
+                  ),
+                ],
+              ),
+            );
           }
-          if (!snapshot.hasData || snapshot.data!.isEmpty || snapshot.data!.every((qs) => qs.docs.isEmpty)) {
-            print('Mesaj bulunamadı: Veri yok veya boş');
-            return Center(child: Text('Mesaj bulunamadı.'));
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('Henüz mesaj yok.'));
           }
 
-          final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> latestMessages = {};
-          for (var snapshot in snapshot.data!) {
-            for (var doc in snapshot.docs) {
-              final messageData = doc.data();
-              final senderId = messageData['senderId'] as String?;
-              final receiverId = messageData['receiverId'] as String?;
-              if (senderId == null || receiverId == null) continue;
+          // Sohbetleri grupla ve son mesajları bul
+          final Map<String, DocumentSnapshot> latestMessages = {};
+          final currentUserId = currentUser.uid;
 
-              final otherUserId = senderId == user.uid ? receiverId : senderId;
-              final currentTimestamp = messageData['timestamp'] as Timestamp?;
-              final existingMessage = latestMessages[otherUserId];
-              final existingTimestamp = existingMessage?.data()['timestamp'] as Timestamp?;
+          for (final message in snapshot.data!.docs) {
+            try {
+              final data = message.data() as Map<String, dynamic>;
+              final participants = List<String>.from(data['participants'] ?? []);
+              final deletedFor = List<String>.from(data['deletedFor'] ?? []);
 
-              if (currentTimestamp != null &&
-                  (existingTimestamp == null || currentTimestamp.compareTo(existingTimestamp) > 0)) {
-                latestMessages[otherUserId] = doc;
+              if (deletedFor.contains(currentUserId)) continue;
+
+              final otherUserId = participants.firstWhere(
+                    (id) => id != currentUserId,
+                orElse: () => '',
+              );
+
+              if (otherUserId.isNotEmpty) {
+                final messageTimestamp = data['timestamp'] as Timestamp;
+                final existingMessage = latestMessages[otherUserId];
+                final existingTimestamp = existingMessage?.get('timestamp') as Timestamp?;
+
+                if (existingTimestamp == null || messageTimestamp.compareTo(existingTimestamp) > 0) {
+                  latestMessages[otherUserId] = message;
+                }
               }
+            } catch (e) {
+              print('Mesaj işleme hatası: $e');
             }
           }
 
-          final messages = latestMessages.values.toList()
+          // Sohbetleri tarihe göre sırala
+          final sortedChats = latestMessages.entries.toList()
             ..sort((a, b) {
-              final aTimestamp = a.data()['timestamp'] as Timestamp?;
-              final bTimestamp = b.data()['timestamp'] as Timestamp?;
-              if (aTimestamp == null || bTimestamp == null) return 0;
+              final aTimestamp = (a.value.data() as Map<String, dynamic>)['timestamp'] as Timestamp;
+              final bTimestamp = (b.value.data() as Map<String, dynamic>)['timestamp'] as Timestamp;
               return bTimestamp.compareTo(aTimestamp);
             });
 
-          print('Çekilen sohbet sayısı: ${messages.length}');
-          if (messages.isEmpty) {
-            print('Mesaj bulunamadı: Gruplandırılmış veri yok');
-            return Center(child: Text('Mesaj bulunamadı.'));
-          }
-
           return ListView.builder(
-            itemCount: messages.length,
+            itemCount: sortedChats.length,
             itemBuilder: (context, index) {
-              final messageData = messages[index].data();
-              final senderId = messageData['senderId'] as String?;
-              final receiverId = messageData['receiverId'] as String?;
-              final text = messageData['text'] as String?;
-              final timestamp = messageData['timestamp'] as Timestamp?;
-              if (senderId == null || receiverId == null || text == null) {
-                print('Eksik veri: $messageData');
-                return const SizedBox.shrink();
-              }
-              final isSentByMe = senderId == user.uid;
-              final otherUserId = isSentByMe ? receiverId : senderId;
+              final entry = sortedChats[index];
+              final otherUserId = entry.key;
+              final lastMessage = entry.value.data() as Map<String, dynamic>;
 
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
+              final isRead = lastMessage['isRead'] as bool? ?? false;
+              final isSentByMe = lastMessage['senderId'] as String == currentUser.uid;
+              final messageText = lastMessage['text'] as String? ?? '';
+              final timestamp = lastMessage['timestamp'] as Timestamp?;
+
+              return FutureBuilder<Map<String, dynamic>>(
+                future: _getUserData(otherUserId),
                 builder: (context, userSnapshot) {
-                  String username = 'Bilinmiyor';
-                  String? profilePictureUrl;
-                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                    final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
-                    if (userData != null) {
-                      username = userData['username'] as String? ?? 'Bilinmiyor';
-                      profilePictureUrl = userData['profilePictureUrl'] as String?;
-                    }
-                  }
+                  final userData = userSnapshot.data ?? {
+                    'username': 'Bilinmeyen Kullanıcı',
+                    'profileImageUrl': null
+                  };
+                  final username = userData['username'] as String? ?? 'Bilinmeyen';
+                  final profileImageUrl = userData['profileImageUrl'] as String?;
 
                   return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: ListTile(
                       leading: CircleAvatar(
-                        radius: 24,
-                        backgroundImage: profilePictureUrl != null ? NetworkImage(profilePictureUrl) : null,
-                        child: profilePictureUrl == null
-                            ? Text(username[0], style: TextStyle(color: Theme.of(context).colorScheme.onPrimary))
+                        backgroundImage: profileImageUrl != null
+                            ? NetworkImage(profileImageUrl)
+                            : null,
+                        child: profileImageUrl == null
+                            ? Text(username.isNotEmpty ? username[0] : '?')
                             : null,
                       ),
                       title: Text(username),
                       subtitle: Text(
-                        text,
+                        isSentByMe ? 'Sen: $messageText' : messageText,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            timestamp != null ? DateFormat('HH:mm, dd MMM').format(timestamp.toDate()) : 'Bilinmiyor',
-                            style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-                            onPressed: () async {
-                              final batch = FirebaseFirestore.instance.batch();
-                              final relatedMessages = await FirebaseFirestore.instance
-                                  .collection('messages')
-                                  .where('senderId', isEqualTo: user.uid)
-                                  .where('receiverId', isEqualTo: otherUserId)
-                                  .get();
-                              final relatedMessages2 = await FirebaseFirestore.instance
-                                  .collection('messages')
-                                  .where('receiverId', isEqualTo: user.uid)
-                                  .where('senderId', isEqualTo: otherUserId)
-                                  .get();
-                              for (var doc in relatedMessages.docs) {
-                                batch.delete(doc.reference);
-                              }
-                              for (var doc in relatedMessages2.docs) {
-                                batch.delete(doc.reference);
-                              }
-                              await batch.commit();
-                              print('Sohbet silindi: $otherUserId');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('$username ile sohbet silindi.')),
-                              );
-                            },
-                          ),
+                          if (timestamp != null)
+                            Text(
+                              DateFormat('HH:mm').format(timestamp.toDate()),
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          if (!isRead && !isSentByMe)
+                            Icon(Icons.circle, color: Colors.blue, size: 12),
                         ],
                       ),
                       onTap: () {

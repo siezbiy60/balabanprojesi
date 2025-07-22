@@ -121,6 +121,14 @@ class HomePage extends StatelessWidget {
                         subtitle: Text('Yaş: ${age ?? "Bilinmiyor"} • Şehir: $city'),
                         trailing: ElevatedButton(
                           onPressed: () {
+                            print('Sohbet Et butonuna basıldı, receiverId: $userId, username: $username');
+                            if (userId.isEmpty || username.isEmpty) {
+                              print('Hata: receiverId veya username boş! userId: $userId, username: $username');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Hata: Geçersiz kullanıcı ID veya kullanıcı adı')),
+                              );
+                              return;
+                            }
                             Navigator.push(
                               context,
                               MaterialPageRoute(
