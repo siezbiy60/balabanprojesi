@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import 'chat_page.dart';
 import 'profile_page.dart';
 import 'messages_page.dart';
+import 'user_profile_page.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'friend_requests_page.dart';
 
 class HomePage extends StatelessWidget {
   @override
@@ -17,8 +20,8 @@ class HomePage extends StatelessWidget {
         backgroundColor: Theme.of(context).primaryColor,
         elevation: 0,
         actions: [
-          FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return CircleAvatar(radius: 20, child: CircularProgressIndicator());
@@ -39,13 +42,54 @@ class HomePage extends StatelessWidget {
                 },
                 child: CircleAvatar(
                   radius: 20,
-                  backgroundImage: profileImageUrl != null ? NetworkImage(profileImageUrl) : null,
+                  backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                      ? CachedNetworkImageProvider(profileImageUrl)
+                      : null,
                   child: profileImageUrl == null ? Icon(Icons.person, color: Colors.white) : null,
                 ),
               );
             },
           ),
           SizedBox(width: 16),
+          // Arkadaşlık istekleri butonu
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+            builder: (context, snapshot) {
+              int requestCount = 0;
+              if (snapshot.hasData && snapshot.data!.exists) {
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                final List friendRequests = data['friendRequests'] ?? [];
+                requestCount = friendRequests.length;
+              }
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.person_add_alt_1),
+                    tooltip: 'Arkadaşlık İstekleri',
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/friend_requests');
+                    },
+                  ),
+                  if (requestCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$requestCount',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ],
       ),
       body: Column(
@@ -70,6 +114,15 @@ class HomePage extends StatelessWidget {
                 }
                 if (snapshot.hasError) {
                   print('HomePage kullanıcı hatası: ${snapshot.error.toString()}');
+                  if (snapshot.error.toString().contains('permission-denied')) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Oturumunuz sona erdi, lütfen tekrar giriş yapın.')),
+                      );
+                      Navigator.pushReplacementNamed(context, '/login');
+                    });
+                    return Center(child: CircularProgressIndicator());
+                  }
                   return Center(child: Text('Hata: ${snapshot.error.toString()}'));
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -114,7 +167,9 @@ class HomePage extends StatelessWidget {
                       child: ListTile(
                         leading: CircleAvatar(
                           radius: 24,
-                          backgroundImage: profileImageUrl != null ? NetworkImage(profileImageUrl) : null,
+                          backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                              ? CachedNetworkImageProvider(profileImageUrl)
+                              : null,
                           child: profileImageUrl == null ? Icon(Icons.person, color: Colors.white) : null,
                         ),
                         title: Text(username, style: TextStyle(fontWeight: FontWeight.bold)),
@@ -145,6 +200,14 @@ class HomePage extends StatelessWidget {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserProfilePage(userId: userId),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },

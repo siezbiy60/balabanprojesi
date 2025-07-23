@@ -18,7 +18,21 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _nameController = TextEditingController();
   final _birthDateController = TextEditingController();
   final _cityController = TextEditingController();
+  final _bioController = TextEditingController();
   String? _gender;
+  String? _selectedCity;
+  final List<String> _cities = [
+    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya', 'Artvin', 'Aydın',
+    'Balıkesir', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı',
+    'Çorum', 'Denizli', 'Diyarbakır', 'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir',
+    'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Isparta', 'Mersin', 'İstanbul',
+    'İzmir', 'Kars', 'Kastamonu', 'Kayseri', 'Kırklareli', 'Kırşehir', 'Kocaeli', 'Konya',
+    'Kütahya', 'Malatya', 'Manisa', 'Kahramanmaraş', 'Mardin', 'Muğla', 'Muş', 'Nevşehir',
+    'Niğde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 'Tekirdağ',
+    'Tokat', 'Trabzon', 'Tunceli', 'Şanlıurfa', 'Uşak', 'Van', 'Yozgat', 'Zonguldak',
+    'Aksaray', 'Bayburt', 'Karaman', 'Kırıkkale', 'Batman', 'Şırnak', 'Bartın', 'Ardahan',
+    'Iğdır', 'Yalova', 'Karabük', 'Kilis', 'Osmaniye', 'Düzce'
+  ];
   File? _image;
   final _picker = ImagePicker();
   bool _isLoading = false;
@@ -66,12 +80,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         'username': _usernameController.text.trim(),
         'name': _nameController.text.trim(),
         'birthDate': _birthDateController.text.trim(),
-        'city': _cityController.text.trim(),
+        'city': _selectedCity,
         'gender': _gender,
         'profileImageUrl': profileImageUrl,
         'email': user.email,
         'createdAt': FieldValue.serverTimestamp(),
         'fcmToken': fcmToken, // Yeni: FCM token
+        'bio': _bioController.text.trim(),
       });
 
       Navigator.pushReplacement(
@@ -127,24 +142,36 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               TextFormField(
                 controller: _birthDateController,
                 decoration: InputDecoration(labelText: 'Doğum Tarihi (GG/AA/YYYY)'),
-                validator: (value) {
-                  if (value!.isEmpty) return 'Doğum tarihi gerekli';
-                  final parts = value.split('/');
-                  if (parts.length != 3) return 'Geçersiz format';
-                  try {
-                    int.parse(parts[0]);
-                    int.parse(parts[1]);
-                    int.parse(parts[2]);
-                    return null;
-                  } catch (e) {
-                    return 'Geçersiz tarih';
+                readOnly: true,
+                onTap: () async {
+                  FocusScope.of(context).requestFocus(FocusNode());
+                  DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime(2000, 1, 1),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    _birthDateController.text =
+                        '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
                   }
                 },
+                validator: (value) => value!.isEmpty ? 'Doğum tarihi gerekli' : null,
               ),
-              TextFormField(
-                controller: _cityController,
+              DropdownButtonFormField<String>(
                 decoration: InputDecoration(labelText: 'Şehir'),
-                validator: (value) => value!.isEmpty ? 'Şehir gerekli' : null,
+                value: _selectedCity,
+                items: _cities.map((city) => DropdownMenuItem(
+                  value: city,
+                  child: Text(city),
+                )).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCity = value;
+                    _cityController.text = value ?? '';
+                  });
+                },
+                validator: (value) => value == null || value.isEmpty ? 'Şehir seçiniz' : null,
               ),
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(labelText: 'Cinsiyet'),
@@ -161,6 +188,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   });
                 },
                 validator: (value) => value == null ? 'Cinsiyet seçiniz' : null,
+              ),
+              TextFormField(
+                controller: _bioController,
+                decoration: InputDecoration(labelText: 'Hakkında (Bio)'),
+                maxLines: 2,
+                maxLength: 120,
+                validator: (value) => value!.length > 120 ? 'En fazla 120 karakter' : null,
               ),
               SizedBox(height: 16),
               ElevatedButton(

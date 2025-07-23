@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Kullanıcı belgeleri
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                    request.auth.uid == userId;
+    }
+    // Mesaj belgeleri
+    match /messages/{messageId} {
+      
+      // Okuma: sadece gönderen veya alıcı
+      allow read: if request.auth != null &&
+                   (request.auth.uid == resource.data.senderId ||
+                    request.auth.uid == resource.data.receiverId);
+      // Liste sorguları için geniş kapsamlı erişim
+      allow list: if request.auth != null;
+      // Yazma (oluşturma): sadece gönderen
+      allow create: if request.auth != null &&
+                     request.auth.uid == request.resource.data.senderId;
+      // Güncelleme: isRead veya deletedFor
+      allow update: if request.auth != null &&
+                     (request.auth.uid == resource.data.senderId ||
+                      request.auth.uid == resource.data.receiverId ||
+                      request.auth.uid in resource.data.participants) &&
+                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) ||
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedFor']));
+      // Silme izni: gönderen veya alıcı
+      allow delete: if request.auth != null &&
+                     (request.auth.uid == resource.data.senderId ||
+                      request.auth.uid == resource.data.receiverId);
+    }
+  }
+}
