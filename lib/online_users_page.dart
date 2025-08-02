@@ -33,10 +33,12 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
 
       // Çevrimiçi kullanıcıları al (son 5 dakika içinde aktif olanlar)
       final fiveMinutesAgo = DateTime.now().subtract(Duration(minutes: 5));
+      final fiveMinutesAgoTimestamp = Timestamp.fromDate(fiveMinutesAgo);
       
       final querySnapshot = await _firestore
           .collection('users')
           .where('isOnline', isEqualTo: true)
+          .where('lastActive', isGreaterThan: fiveMinutesAgoTimestamp)
           .get();
 
       final users = <Map<String, dynamic>>[];

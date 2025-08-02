@@ -84,6 +84,7 @@ class _MessagesPageState extends State<MessagesPage> {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -100,18 +101,19 @@ class _MessagesPageState extends State<MessagesPage> {
     }
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.chat_bubble_rounded,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimary,
                 size: 24,
               ),
             ),
@@ -119,14 +121,14 @@ class _MessagesPageState extends State<MessagesPage> {
             Text(
               'Mesajlar',
               style: TextStyle(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimary,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -137,11 +139,11 @@ class _MessagesPageState extends State<MessagesPage> {
           Container(
             margin: EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: Icon(Icons.search, color: Colors.white, size: 24),
+              icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onPrimary, size: 24),
               onPressed: () {
                 // Arama fonksiyonu
               },
@@ -161,7 +163,7 @@ class _MessagesPageState extends State<MessagesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error, color: Colors.red, size: 48),
+                  Icon(Icons.error, color: Theme.of(context).colorScheme.error, size: 48),
                   const SizedBox(height: 16),
                   Text('Hata oluştu: ${snapshot.error}'),
                   const SizedBox(height: 16),
@@ -182,13 +184,13 @@ class _MessagesPageState extends State<MessagesPage> {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: Theme.of(context).colorScheme.surface,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.chat_bubble_outline,
                       size: 64,
-                      color: Colors.grey[400],
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -197,7 +199,7 @@ class _MessagesPageState extends State<MessagesPage> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -205,7 +207,7 @@ class _MessagesPageState extends State<MessagesPage> {
                     'Arkadaşlarınızla sohbet etmeye başlayın',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey[500],
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -287,17 +289,16 @@ class _MessagesPageState extends State<MessagesPage> {
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Colors.white,
-                          Colors.grey.shade50,
-                        ],
+                        colors: Theme.of(context).brightness == Brightness.dark
+                          ? [Theme.of(context).colorScheme.surface, Theme.of(context).colorScheme.surface.withOpacity(0.8)]
+                          : [Theme.of(context).colorScheme.surface, Theme.of(context).colorScheme.surface.withOpacity(0.8)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.deepPurple.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                           spreadRadius: 0,
                           blurRadius: 12,
                           offset: const Offset(0, 4),
@@ -311,7 +312,7 @@ class _MessagesPageState extends State<MessagesPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.withOpacity(0.2),
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
                               spreadRadius: 0,
                               blurRadius: 4,
                               offset: const Offset(0, 2),
@@ -323,14 +324,14 @@ class _MessagesPageState extends State<MessagesPage> {
                           backgroundImage: profileImageUrl != null
                               ? NetworkImage(profileImageUrl)
                               : null,
-                          backgroundColor: profileImageUrl == null ? Colors.blue[100] : null,
+                          backgroundColor: profileImageUrl == null ? Theme.of(context).colorScheme.primary.withOpacity(0.2) : null,
                           child: profileImageUrl == null
                               ? Text(
                                   username.isNotEmpty ? username[0].toUpperCase() : '?',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue[700],
+                                    color: Theme.of(context).colorScheme.primary,
                                   ),
                                 )
                               : null,
@@ -341,10 +342,10 @@ class _MessagesPageState extends State<MessagesPage> {
                           Expanded(
                             child: Text(
                               username,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: Theme.of(context).colorScheme.onBackground,
                               ),
                             ),
                           ),
@@ -353,7 +354,7 @@ class _MessagesPageState extends State<MessagesPage> {
                               DateFormat('HH:mm').format(timestamp.toDate()),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                               ),
                             ),
                         ],
@@ -371,7 +372,7 @@ class _MessagesPageState extends State<MessagesPage> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[600],
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                   ),
                                 ),
                               ),
@@ -380,8 +381,8 @@ class _MessagesPageState extends State<MessagesPage> {
                                 Container(
                                   width: 8,
                                   height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.blue,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary,
                                     shape: BoxShape.circle,
                                   ),
                                 ),

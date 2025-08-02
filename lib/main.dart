@@ -8,9 +8,12 @@ import 'home_page.dart';
 import 'firebase_options.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'webrtc_call_page.dart';
 import 'matching_service.dart';
+import 'theme_service.dart';
+import 'online_status_service.dart';
 
 class IncomingCallOverlayController extends ChangeNotifier {
   String? callerName;
@@ -92,20 +95,37 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    ThemeService.initialize();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Balaban Proje',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: ChangeNotifierProvider.value(
-        value: incomingCallOverlayController,
-        child: MainApp(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: incomingCallOverlayController),
+      ],
+      child: ValueListenableBuilder<bool>(
+        valueListenable: ThemeService.themeNotifier,
+        builder: (context, isDarkMode, child) {
+          return MaterialApp(
+            title: 'Balaban Proje',
+            theme: ThemeService.lightTheme,
+            darkTheme: ThemeService.darkTheme,
+            themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: MainApp(),
+          );
+        },
       ),
     );
   }
@@ -117,11 +137,25 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
+  Timer? _activityTimer;
   @override
   void initState() {
     super.initState();
     _setupFirebaseMessaging();
     _saveFcmToken();
+    OnlineStatusService.setOnline();
+    
+    // Her 2 dakikada bir son aktif zamanını güncelle
+    _activityTimer = Timer.periodic(Duration(minutes: 2), (timer) {
+      OnlineStatusService.updateLastActive();
+    });
+  }
+
+  @override
+  void dispose() {
+    _activityTimer?.cancel();
+    OnlineStatusService.setOffline();
+    super.dispose();
   }
 
   Future<void> _saveFcmToken() async {
@@ -287,198 +321,11 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BalabanProje',
-      theme: ThemeData(
-        brightness: Brightness.light,
-        primaryColor: const Color(0xFF1976D2), // Mavi
-        scaffoldBackgroundColor: const Color(0xFFF6F8FC), // Soft açık gri
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF222222),
-          elevation: 0.5,
-          iconTheme: IconThemeData(color: Color(0xFF1976D2)),
-          titleTextStyle: TextStyle(
-            color: Color(0xFF222222), fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 0.2,
-          ),
-        ),
-        colorScheme: const ColorScheme.light(
-          primary: Color(0xFF1976D2), // Mavi
-          secondary: Color(0xFF64B5F6), // Açık mavi
-          onPrimary: Colors.white,
-          surface: Color(0xFFF6F8FC),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1976D2),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            elevation: 2,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          ),
-        ),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Color(0xFF222222), fontSize: 16),
-          headlineSmall: TextStyle(color: Color(0xFF1976D2), fontWeight: FontWeight.bold, fontSize: 22),
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 3,
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-        iconTheme: const IconThemeData(color: Color(0xFF1976D2)),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF1976D2),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-        ),
-        dividerTheme: const DividerThemeData(
-          color: Color(0xFFE3E6ED),
-          thickness: 1,
-        ),
-        listTileTheme: const ListTileThemeData(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
-          tileColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        ),
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: const Color(0xFF232B3E),
-        scaffoldBackgroundColor: const Color(0xFF181A20),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF232B3E),
-          foregroundColor: Colors.white,
-          elevation: 0.5,
-          iconTheme: IconThemeData(color: Color(0xFF90CAF9)),
-          titleTextStyle: TextStyle(
-            color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 0.2,
-          ),
-        ),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF90CAF9), // Açık mavi
-          secondary: Color(0xFF1976D2), // Mavi
-          onPrimary: Colors.white,
-          surface: Color(0xFF232B3E),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1976D2),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            elevation: 2,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          ),
-        ),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.white, fontSize: 16),
-          headlineSmall: TextStyle(color: Color(0xFF90CAF9), fontWeight: FontWeight.bold, fontSize: 22),
-        ),
-        cardTheme: CardThemeData(
-          color: Color(0xFF232B3E),
-          elevation: 3,
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF232B3E),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-        iconTheme: const IconThemeData(color: Color(0xFF90CAF9)),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF1976D2),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-        ),
-        dividerTheme: const DividerThemeData(
-          color: Color(0xFF2C3142),
-          thickness: 1,
-        ),
-        listTileTheme: const ListTileThemeData(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
-          tileColor: Color(0xFF232B3E),
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        ),
-      ),
-      themeMode: ThemeMode.system,
-      home: Stack(
-        children: [
-          AuthWrapper(),
-          Consumer<IncomingCallOverlayController>(
-            builder: (context, overlay, child) {
-              if (!overlay.visible) return SizedBox.shrink();
-              return Positioned(
-                top: 40,
-                left: 20,
-                right: 20,
-                child: Material(
-                  elevation: 8,
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.white,
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('${overlay.callerName} sizi arıyor!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                                                         ElevatedButton(
-                               onPressed: () async {
-                                 overlay.hide();
-                                 
-                                 try {
-                                   // Voice call dokümantından caller ID'yi al
-                                   final callDoc = await FirebaseFirestore.instance
-                                       .collection('calls')
-                                       .doc(overlay.peerId!)
-                                       .get();
-                                   
-                                   if (callDoc.exists) {
-                                     Navigator.of(context).push(
-                                       MaterialPageRoute(builder: (context) => WebRTCCallPage(callId: overlay.peerId!, isCaller: false)),
-                                     );
-                                   }
-                                 } catch (e) {
-                                   print('Call bilgisi alınamadı: $e');
-                                 }
-                               },
-                              child: Text('Kabul Et'),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                overlay.hide();
-                                // Reddetme işlemi: İstersen Firestore'a "rejected" yazabilirsin
-                              },
-                              child: Text('Reddet'),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
+    // İkinci MaterialApp'ı kaldır, sadece ana widget'ı döndür
+    // Örneğin:
+    // return HomePage();
+    // veya ana sayfan neyse onu döndür
+    return HomePage();
   }
 }
 

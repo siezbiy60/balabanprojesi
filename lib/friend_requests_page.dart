@@ -86,12 +86,12 @@ class _FriendRequestsPageState extends State<FriendRequestsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.check, color: Colors.green),
+                          icon: Icon(Icons.check, color: Theme.of(context).colorScheme.secondary),
                           tooltip: 'Kabul Et',
                           onPressed: () => _acceptRequest(otherUserId),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.red),
+                          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.error),
                           tooltip: 'Reddet',
                           onPressed: () => _rejectRequest(otherUserId),
                         ),

@@ -96,11 +96,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Profil Kurulumu'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: Text('Profil Kurulumu'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
       ),
       body: _isLoading
@@ -114,21 +114,21 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   children: [
                     const SizedBox(height: 20),
                     // Başlık
-                    const Text(
+                    Text(
                       'Profilinizi Tamamlayın',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Diğer kullanıcılar sizi daha iyi tanıyabilir',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -137,11 +137,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     // Ad
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 10,
                             offset: const Offset(0, 2),
@@ -150,11 +150,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       ),
                       child: TextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Ad *',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
-                          prefixIcon: Icon(Icons.person, color: Colors.blue),
+                          prefixIcon: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Ad giriniz' : null,
                       ),
@@ -164,11 +164,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     // Soyad
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 10,
                             offset: const Offset(0, 2),
@@ -177,11 +177,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       ),
                       child: TextFormField(
                         controller: _surnameController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Soyad *',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
-                          prefixIcon: Icon(Icons.person_outline, color: Colors.blue),
+                          prefixIcon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Soyad giriniz' : null,
                       ),
@@ -191,11 +191,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     // Kullanıcı Adı
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 10,
                             offset: const Offset(0, 2),
@@ -204,11 +204,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       ),
                       child: TextFormField(
                         controller: _usernameController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Kullanıcı Adı *',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
-                          prefixIcon: Icon(Icons.alternate_email, color: Colors.blue),
+                          prefixIcon: Icon(Icons.alternate_email, color: Theme.of(context).colorScheme.primary),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Kullanıcı adı giriniz' : null,
                       ),
@@ -218,11 +218,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     // Şehir
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 10,
                             offset: const Offset(0, 2),
@@ -236,11 +236,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           child: Text(city),
                         )).toList(),
                         onChanged: (value) => setState(() => _selectedCity = value),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Şehir *',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
-                          prefixIcon: Icon(Icons.location_city, color: Colors.blue),
+                          prefixIcon: Icon(Icons.location_city, color: Theme.of(context).colorScheme.primary),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Şehir seçiniz' : null,
                       ),
@@ -250,11 +250,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     // Cinsiyet
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 10,
                             offset: const Offset(0, 2),
@@ -268,11 +268,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           child: Text(gender),
                         )).toList(),
                         onChanged: (value) => setState(() => _gender = value),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Cinsiyet *',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
-                          prefixIcon: Icon(Icons.person_outline, color: Colors.blue),
+                          prefixIcon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Cinsiyet seçiniz' : null,
                       ),
@@ -282,11 +282,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     // Biyografi
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 10,
                             offset: const Offset(0, 2),
@@ -295,11 +295,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       ),
                       child: TextFormField(
                         controller: _bioController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Biyografi',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
-                          prefixIcon: Icon(Icons.info, color: Colors.blue),
+                          prefixIcon: Icon(Icons.info, color: Theme.of(context).colorScheme.primary),
                         ),
                         maxLines: 3,
                       ),
@@ -313,7 +313,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.blue.withOpacity(0.3),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                             spreadRadius: 1,
                             blurRadius: 10,
                             offset: const Offset(0, 4),
@@ -323,14 +323,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       child: ElevatedButton(
                         onPressed: _saveProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Profili Kaydet',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),

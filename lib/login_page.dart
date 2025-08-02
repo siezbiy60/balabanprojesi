@@ -232,6 +232,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(title: Text(_isLogin ? 'Giriş Yap' : 'Kayıt Ol')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -242,13 +243,29 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'E-posta'),
+                decoration: InputDecoration(
+                  labelText: 'E-posta',
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                  ),
+                ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) => value!.isEmpty ? 'E-posta gerekli.' : null,
               ),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Şifre'),
+                decoration: InputDecoration(
+                  labelText: 'Şifre',
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                  ),
+                ),
                 obscureText: true,
                 validator: (value) => value!.isEmpty ? 'Şifre gerekli.' : null,
               ),
@@ -268,10 +285,10 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 16),
               if (_errorMessage != null)
-                Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
               const SizedBox(height: 16),
               _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary)))
                   : ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {

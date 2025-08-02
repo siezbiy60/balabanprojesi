@@ -28,6 +28,22 @@ class _ChatPageState extends State<ChatPage> {
   bool _isLoading = false;
   String? _chatId;
 
+  String _formatLastSeen(Timestamp timestamp) {
+    final now = DateTime.now();
+    final lastSeen = timestamp.toDate();
+    final difference = now.difference(lastSeen);
+    
+    if (difference.inMinutes < 1) {
+      return 'az önce';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} dk önce';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} sa önce';
+    } else {
+      return '${difference.inDays} gün önce';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -242,23 +258,23 @@ class _ChatPageState extends State<ChatPage> {
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: CircleAvatar(
                 radius: 16,
-                backgroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.onPrimary,
                 child: Text(
                   widget.receiverName.isNotEmpty ? widget.receiverName[0].toUpperCase() : '?',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,39 +282,63 @@ class _ChatPageState extends State<ChatPage> {
                 children: [
                   Text(
                     widget.receiverName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Çevrimiçi',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: _firestore.collection('users').doc(widget.receiverId).snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return SizedBox.shrink();
+                      }
+
+                      final userData = snapshot.data!.data() as Map<String, dynamic>;
+                      final isOnline = userData['isOnline'] as bool? ?? false;
+                      final lastActive = userData['lastActive'] as Timestamp?;
+                      final fiveMinutesAgo = DateTime.now().subtract(Duration(minutes: 5));
+
+                      // Son 5 dakika içinde aktif değilse çevrimdışı kabul et
+                      final isReallyOnline = isOnline && lastActive != null && 
+                          lastActive.toDate().isAfter(fiveMinutesAgo);
+
+                      return Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isReallyOnline 
+                                ? Theme.of(context).colorScheme.secondary
+                                : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            isReallyOnline 
+                              ? 'Çevrimiçi'
+                              : lastActive != null 
+                                ? 'Son görülme: ${_formatLastSeen(lastActive)}'
+                                : 'Çevrimdışı',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
             ),
           ],
         ),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -309,11 +349,11 @@ class _ChatPageState extends State<ChatPage> {
           Container(
             margin: EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: Icon(Icons.call, color: Colors.white, size: 24),
+              icon: Icon(Icons.call, color: Theme.of(context).colorScheme.onPrimary, size: 24),
               onPressed: () => _startVoiceCall(),
               tooltip: 'Sesli Arama',
             ),
@@ -321,11 +361,11 @@ class _ChatPageState extends State<ChatPage> {
           Container(
             margin: EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: Icon(Icons.videocam, color: Colors.white, size: 24),
+              icon: Icon(Icons.videocam, color: Theme.of(context).colorScheme.onPrimary, size: 24),
               onPressed: () => _startVideoCall(),
               tooltip: 'Görüntülü Arama',
             ),
@@ -333,11 +373,11 @@ class _ChatPageState extends State<ChatPage> {
           Container(
             margin: EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert, color: Colors.white, size: 24),
+              icon: Icon(Icons.more_vert, color: Theme.of(context).colorScheme.onPrimary, size: 24),
               onSelected: (value) {
                 switch (value) {
                   case 'profile':
@@ -391,7 +431,7 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           Expanded(
             child: _chatId == null
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : StreamBuilder<QuerySnapshot>(
                     stream: _firestore
                         .collection('messages')
@@ -403,10 +443,10 @@ class _ChatPageState extends State<ChatPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.error, color: Colors.red, size: 48),
-                              const SizedBox(height: 16),
+                              Icon(Icons.error, color: Theme.of(context).colorScheme.error, size: 48),
+                              SizedBox(height: 16),
                               Text('Hata: ${snapshot.error}'),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: _initializeChat,
                                 child: const Text('Yenile'),
@@ -417,7 +457,7 @@ class _ChatPageState extends State<ChatPage> {
                       }
 
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return Center(child: CircularProgressIndicator());
                       }
 
                       final messages = snapshot.data?.docs ?? [];
@@ -437,7 +477,7 @@ class _ChatPageState extends State<ChatPage> {
                       });
 
                       if (messages.isEmpty) {
-                        return const Center(
+                        return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -447,7 +487,7 @@ class _ChatPageState extends State<ChatPage> {
                                 'Henüz mesaj yok',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: Colors.grey,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                               SizedBox(height: 8),
@@ -455,7 +495,7 @@ class _ChatPageState extends State<ChatPage> {
                                 'İlk mesajı göndererek sohbeti başlatın',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
                             ],
@@ -486,13 +526,13 @@ class _ChatPageState extends State<ChatPage> {
                                 if (!isMe) ...[
                                   CircleAvatar(
                                     radius: 16,
-                                    backgroundColor: Colors.grey[300],
+                                    backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                                     child: Text(
                                       widget.receiverName.isNotEmpty ? widget.receiverName[0].toUpperCase() : '?',
-                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                 ],
                                 Flexible(
                                   child: Container(
@@ -501,7 +541,7 @@ class _ChatPageState extends State<ChatPage> {
                                     ),
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     decoration: BoxDecoration(
-                                      color: isMe ? Colors.blue : Colors.grey[200],
+                                      color: isMe ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
                                       borderRadius: BorderRadius.circular(20).copyWith(
                                         bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(4),
                                         bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
@@ -513,27 +553,27 @@ class _ChatPageState extends State<ChatPage> {
                                         Text(
                                           message['text'] ?? '',
                                           style: TextStyle(
-                                            color: isMe ? Colors.white : Colors.black87,
+                                            color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
                                             fontSize: 16,
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
+                                        SizedBox(height: 4),
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
                                               time,
                                               style: TextStyle(
-                                                color: isMe ? Colors.white70 : Colors.grey[600],
+                                                color: isMe ? Theme.of(context).colorScheme.onPrimary.withOpacity(0.7) : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                                 fontSize: 12,
                                               ),
                                             ),
                                             if (isMe) ...[
-                                              const SizedBox(width: 4),
+                                              SizedBox(width: 4),
                                               Icon(
                                                 message['isRead'] == true ? Icons.done_all : Icons.done,
                                                 size: 16,
-                                                color: message['isRead'] == true ? Colors.white70 : Colors.white54,
+                                                color: message['isRead'] == true ? Theme.of(context).colorScheme.onPrimary.withOpacity(0.7) : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
                                               ),
                                             ],
                                           ],
@@ -543,11 +583,11 @@ class _ChatPageState extends State<ChatPage> {
                                   ),
                                 ),
                                 if (isMe) ...[
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   CircleAvatar(
                                     radius: 16,
-                                    backgroundColor: Colors.blue[100],
-                                    child: const Icon(Icons.person, size: 16, color: Colors.blue),
+                                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                    child: Icon(Icons.person, size: 16, color: Theme.of(context).colorScheme.primary),
                                   ),
                                 ],
                               ],
@@ -562,10 +602,9 @@ class _ChatPageState extends State<ChatPage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.white,
-                  Colors.grey.shade50,
-                ],
+                colors: Theme.of(context).brightness == Brightness.dark
+                  ? [Theme.of(context).colorScheme.surface, Theme.of(context).colorScheme.surface.withOpacity(0.8)]
+                  : [Theme.of(context).colorScheme.onPrimary, Theme.of(context).colorScheme.surface],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -574,7 +613,7 @@ class _ChatPageState extends State<ChatPage> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.deepPurple.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   spreadRadius: 0,
                   blurRadius: 12,
                   offset: const Offset(0, -4),
@@ -585,33 +624,32 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
-                    icon: Icon(Icons.attach_file, color: Colors.deepPurple, size: 24),
+                    icon: Icon(Icons.attach_file, color: Theme.of(context).colorScheme.primary, size: 24),
                     onPressed: () {
                       // Dosya ekleme fonksiyonu
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Colors.white,
-                          Colors.grey.shade100,
-                        ],
+                        colors: Theme.of(context).brightness == Brightness.dark
+                          ? [Theme.of(context).colorScheme.surface, Theme.of(context).colorScheme.surface.withOpacity(0.8)]
+                          : [Theme.of(context).colorScheme.onPrimary, Theme.of(context).colorScheme.surface],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.deepPurple.withOpacity(0.2)),
+                      border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.2)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.deepPurple.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                           spreadRadius: 0,
                           blurRadius: 8,
                           offset: const Offset(0, 2),
@@ -632,13 +670,13 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.deepPurple,
-                        Colors.deepPurple.shade700,
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.primary.withOpacity(0.7),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -646,7 +684,7 @@ class _ChatPageState extends State<ChatPage> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.deepPurple.withOpacity(0.4),
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
                         spreadRadius: 0,
                         blurRadius: 12,
                         offset: const Offset(0, 4),
@@ -655,15 +693,15 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   child: IconButton(
                     icon: _isLoading 
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.onPrimary),
                             ),
                           )
-                        : const Icon(Icons.send, color: Colors.white, size: 24),
+                        : Icon(Icons.send, color: Theme.of(context).colorScheme.onPrimary, size: 24),
                     onPressed: _isLoading ? null : _sendMessage,
                   ),
                 ),

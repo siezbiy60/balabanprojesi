@@ -19,10 +19,10 @@ class ProfilePage extends StatelessWidget {
     print('Current User DisplayName: ${user.displayName}');
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Profil'),
-        backgroundColor: Colors.blue,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -124,11 +124,13 @@ class ProfilePage extends StatelessWidget {
                 // Header Section with Gradient
                 Container(
                   width: double.infinity,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.blue, Colors.blueAccent],
+                      colors: Theme.of(context).brightness == Brightness.dark
+                        ? [Theme.of(context).colorScheme.surface, Theme.of(context).colorScheme.primary]
+                        : [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withOpacity(0.7)],
                     ),
                   ),
                   child: SafeArea(
@@ -143,7 +145,7 @@ class ProfilePage extends StatelessWidget {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
+                                    color: Theme.of(context).colorScheme.onBackground.withOpacity(0.3),
                                     spreadRadius: 2,
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
@@ -152,13 +154,13 @@ class ProfilePage extends StatelessWidget {
                               ),
                               child: CircleAvatar(
                                 radius: 70,
-                                backgroundColor: Colors.white,
+                                backgroundColor: Theme.of(context).colorScheme.background,
                                 child: CircleAvatar(
                                   radius: 65,
                                   backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
                                       ? CachedNetworkImageProvider(profileImageUrl)
                                       : null,
-                                  backgroundColor: Colors.grey[300],
+                                  backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                                   child: profileImageUrl == null || profileImageUrl.isEmpty
                                       ? const Icon(Icons.person, size: 70, color: Colors.grey)
                                       : null,
@@ -182,20 +184,20 @@ class ProfilePage extends StatelessWidget {
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surface,
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black26,
+                                        color: Theme.of(context).colorScheme.onBackground.withOpacity(0.26),
                                         blurRadius: 8,
                                         offset: Offset(0, 2),
                                       ),
                                     ],
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.camera_alt,
-                                    color: Colors.blue,
+                                    color: Theme.of(context).colorScheme.primary,
                                     size: 20,
                                   ),
                                 ),
@@ -207,18 +209,18 @@ class ProfilePage extends StatelessWidget {
                         // Name and Username
                         Text(
                           name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '@$username',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white70,
+                            color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -229,9 +231,9 @@ class ProfilePage extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 32),
                             child: Text(
                               bio,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.white70,
+                                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
                               ),
                               textAlign: TextAlign.center,
                               maxLines: 3,
@@ -249,11 +251,11 @@ class ProfilePage extends StatelessWidget {
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                         spreadRadius: 1,
                         blurRadius: 10,
                         offset: const Offset(0, 2),
@@ -263,9 +265,9 @@ class ProfilePage extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStat('Arkadaşlar', friends.length, Icons.people),
-                      _buildStat('Takipçi', followers.length, Icons.favorite),
-                      _buildStat('Takip', following.length, Icons.person_add),
+                      _buildStat(context, 'Arkadaşlar', friends.length, Icons.people),
+                      _buildStat(context, 'Takipçi', followers.length, Icons.favorite),
+                      _buildStat(context, 'Takip', following.length, Icons.person_add),
                     ],
                   ),
                 ),
@@ -275,11 +277,11 @@ class ProfilePage extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                         spreadRadius: 1,
                         blurRadius: 10,
                         offset: const Offset(0, 2),
@@ -289,20 +291,20 @@ class ProfilePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Kişisel Bilgiler',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onBackground,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildInfoRow('İsim Soyisim', name, Icons.person),
-                      _buildInfoRow('Kullanıcı Adı', '@$username', Icons.alternate_email),
-                      _buildInfoRow('Doğum Tarihi', birthDate, Icons.cake),
-                      _buildInfoRow('Şehir', city, Icons.location_city),
-                      _buildInfoRow('Cinsiyet', gender, Icons.person_outline),
+                      _buildInfoRow(context, 'İsim Soyisim', name, Icons.person),
+                      _buildInfoRow(context, 'Kullanıcı Adı', '@$username', Icons.alternate_email),
+                      _buildInfoRow(context, 'Doğum Tarihi', birthDate, Icons.cake),
+                      _buildInfoRow(context, 'Şehir', city, Icons.location_city),
+                      _buildInfoRow(context, 'Cinsiyet', gender, Icons.person_outline),
                     ],
                   ),
                 ),
@@ -314,11 +316,11 @@ class ProfilePage extends StatelessWidget {
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                           spreadRadius: 1,
                           blurRadius: 10,
                           offset: const Offset(0, 2),
@@ -330,14 +332,14 @@ class ProfilePage extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.people, color: Colors.blue),
+                            Icon(Icons.people, color: Theme.of(context).colorScheme.primary),
                             const SizedBox(width: 8),
                             Text(
                               'Arkadaşlar (${friends.length})',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                                color: Theme.of(context).colorScheme.onBackground,
                               ),
                             ),
                           ],
@@ -358,6 +360,7 @@ class ProfilePage extends StatelessWidget {
                                 builder: (context, friendSnap) {
                                   if (!friendSnap.hasData || !friendSnap.data!.exists) {
                                     return _buildFriendItem(
+                                      context,
                                       '?',
                                       null,
                                       () {},
@@ -367,6 +370,7 @@ class ProfilePage extends StatelessWidget {
                                   final friendName = friendData['name'] as String? ?? 'Bilinmiyor';
                                   final friendPhoto = friendData['profileImageUrl'] as String?;
                                   return _buildFriendItem(
+                                    context,
                                     friendName,
                                     friendPhoto,
                                     () {
@@ -410,7 +414,7 @@ class ProfilePage extends StatelessWidget {
                           icon: const Icon(Icons.edit),
                           label: const Text('Profili Düzenle'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
@@ -448,7 +452,7 @@ class ProfilePage extends StatelessWidget {
                           icon: const Icon(Icons.logout),
                           label: const Text('Çıkış Yap'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
+                            backgroundColor: Theme.of(context).colorScheme.error,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
@@ -469,17 +473,17 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStat(String label, int value, IconData icon) {
+  Widget _buildStat(BuildContext context, String label, int value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: Colors.blue, size: 24),
+        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
         const SizedBox(height: 8),
         Text(
           '$value',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.87),
           ),
         ),
         const SizedBox(height: 4),
@@ -487,19 +491,19 @@ class ProfilePage extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon) {
+  Widget _buildInfoRow(BuildContext context, String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue, size: 20),
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -509,15 +513,15 @@ class ProfilePage extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onBackground.withOpacity(0.87),
                   ),
                 ),
               ],
@@ -528,7 +532,7 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildFriendItem(String name, String? photoUrl, VoidCallback onTap) {
+  Widget _buildFriendItem(BuildContext context, String name, String? photoUrl, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -540,9 +544,9 @@ class ProfilePage extends StatelessWidget {
               backgroundImage: photoUrl != null && photoUrl.isNotEmpty
                   ? CachedNetworkImageProvider(photoUrl)
                   : null,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
               child: photoUrl == null || photoUrl.isEmpty
-                  ? const Icon(Icons.person, size: 25, color: Colors.grey)
+                  ? Icon(Icons.person, size: 25, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))
                   : null,
             ),
             const SizedBox(height: 4),
@@ -550,7 +554,7 @@ class ProfilePage extends StatelessWidget {
               width: 50,
               child: Text(
                 name,
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onBackground.withOpacity(0.87)),
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,

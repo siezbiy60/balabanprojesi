@@ -122,11 +122,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
     final myId = currentUser?.uid;
     final isOwnProfile = myId == widget.userId;
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Kullanıcı Profili'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         actions: [
           if (myId != null && myId != widget.userId)
@@ -161,7 +161,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Evet, Çıkar', style: TextStyle(color: Colors.red)),
+                                  child: Text('Evet, Çıkar', style: TextStyle(color: Theme.of(context).colorScheme.error)),
                                 ),
                               ],
                             ),
@@ -172,13 +172,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem<String>(
+                        PopupMenuItem<String>(
                           value: 'remove',
                           child: Row(
                             children: [
-                              Icon(Icons.person_remove, color: Colors.red),
+                              Icon(Icons.person_remove, color: Theme.of(context).colorScheme.error),
                               SizedBox(width: 8),
-                              Text('Arkadaşlıktan Çıkar', style: TextStyle(color: Colors.red)),
+                              Text('Arkadaşlıktan Çıkar', style: TextStyle(color: Theme.of(context).colorScheme.error)),
                             ],
                           ),
                         ),
@@ -240,16 +240,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           // Header Section with Gradient
                           Container(
                             width: double.infinity,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Colors.blue, Colors.blueAccent],
+                                colors: Theme.of(context).brightness == Brightness.dark
+                                  ? [Theme.of(context).colorScheme.surface, Theme.of(context).colorScheme.primary]
+                                  : [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withOpacity(0.7)],
                               ),
                             ),
                             child: SafeArea(
-                              child: Column(
-                                children: [
+                        child: Column(
+                          children: [
                                   const SizedBox(height: 20),
                                   // Profile Image
                                   Container(
@@ -257,7 +259,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.3),
+                                          color: Theme.of(context).colorScheme.onBackground.withOpacity(0.26),
                                           spreadRadius: 2,
                                           blurRadius: 10,
                                           offset: const Offset(0, 4),
@@ -266,35 +268,35 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                     ),
                                     child: CircleAvatar(
                                       radius: 70,
-                                      backgroundColor: Colors.white,
+                                      backgroundColor: Theme.of(context).colorScheme.background,
                                       child: CircleAvatar(
                                         radius: 65,
-                                        backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
-                                            ? CachedNetworkImageProvider(profileImageUrl)
-                                            : null,
-                                        backgroundColor: Colors.grey[300],
+                              backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                                  ? CachedNetworkImageProvider(profileImageUrl)
+                                  : null,
+                                        backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                                         child: profileImageUrl == null || profileImageUrl.isEmpty
-                                            ? const Icon(Icons.person, size: 70, color: Colors.grey)
-                                            : null,
-                                      ),
+                                            ? Icon(Icons.person, size: 70, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))
+                                  : null,
+                            ),
                                     ),
                                   ),
                                   const SizedBox(height: 16),
                                   // Name and Username
-                                  Text(
+                            Text(
                                     name,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: Theme.of(context).colorScheme.onPrimary,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '@$username',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 16,
-                                      color: Colors.white70,
+                                      color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -305,9 +307,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                       padding: const EdgeInsets.symmetric(horizontal: 32),
                                       child: Text(
                                         bio,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
-                                          color: Colors.white70,
+                                          color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
                                         ),
                                         textAlign: TextAlign.center,
                                         maxLines: 3,
@@ -325,11 +327,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             margin: const EdgeInsets.all(16),
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.surface,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey.withOpacity(0.1),
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                                   spreadRadius: 1,
                                   blurRadius: 10,
                                   offset: const Offset(0, 2),
@@ -381,11 +383,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             margin: const EdgeInsets.symmetric(horizontal: 16),
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.surface,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey.withOpacity(0.1),
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                                   spreadRadius: 1,
                                   blurRadius: 10,
                                   offset: const Offset(0, 2),
@@ -395,12 +397,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Kişisel Bilgiler',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                                    color: Theme.of(context).colorScheme.onBackground,
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -420,11 +422,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               margin: const EdgeInsets.symmetric(horizontal: 16),
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.grey.withOpacity(0.1),
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                                     spreadRadius: 1,
                                     blurRadius: 10,
                                     offset: const Offset(0, 2),
@@ -449,8 +451,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                       icon: const Icon(Icons.message, size: 16),
                                       label: const Text('Mesaj', style: TextStyle(fontSize: 10)),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
+                                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                                         padding: const EdgeInsets.symmetric(vertical: 12),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(8),
@@ -474,8 +476,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                         style: const TextStyle(fontSize: 10),
                                       ),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: isFriend ? Colors.red : Colors.green,
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: isFriend ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.secondary,
+                                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                                         padding: const EdgeInsets.symmetric(vertical: 12),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(8),
@@ -494,8 +496,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                         style: const TextStyle(fontSize: 10),
                                       ),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: isFollowing ? Colors.orange : Colors.purple,
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: isFollowing ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.primary,
+                                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                                         padding: const EdgeInsets.symmetric(vertical: 12),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(8),
@@ -524,26 +526,26 @@ class _UserProfilePageState extends State<UserProfilePage> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
         ),
         child: Column(
-          children: [
+        children: [
             Text(
               count.toString(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 24,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onBackground,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onBackground,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -551,7 +553,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
             Icon(
               Icons.arrow_forward_ios,
               size: 12,
-              color: Colors.grey[500],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
           ],
         ),
@@ -564,25 +566,25 @@ class _UserProfilePageState extends State<UserProfilePage> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue, size: 20),
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+      children: [
+        Text(
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onBackground,
                   ),
                 ),
               ],
@@ -604,11 +606,11 @@ class FollowersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Takipçiler'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
       ),
       body: followers.isEmpty
@@ -629,11 +631,11 @@ class FollowersPage extends StatelessWidget {
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 5,
                             offset: const Offset(0, 2),
@@ -641,41 +643,41 @@ class FollowersPage extends StatelessWidget {
                         ],
                       ),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                      leading: CircleAvatar(
+                        backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
                               ? CachedNetworkImageProvider(profileImageUrl)
-                              : null,
-                          backgroundColor: Colors.grey[300],
-                          child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                              ? const Icon(Icons.person)
-                              : null,
-                        ),
-                        title: Text(username, style: const TextStyle(color: Colors.black87)),
-                        trailing: isOwnProfile && myId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                tooltip: 'Takipçiden Çıkar',
-                                onPressed: () async {
-                                  // Kendi profilindeysen takipçiden çıkar
-                                  await FirebaseFirestore.instance.collection('users').doc(myId).update({
-                                    'followers': FieldValue.arrayRemove([followerId])
-                                  });
-                                  // İstersen karşı tarafın following listesinden de çıkarabilirsin
-                                  await FirebaseFirestore.instance.collection('users').doc(followerId).update({
-                                    'following': FieldValue.arrayRemove([myId])
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Takipçi çıkarıldı.')));
-                                },
-                              )
                             : null,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UserProfilePage(userId: followerId),
-                            ),
-                          );
-                        },
+                          backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                        title: Text(username, style: TextStyle(color: Theme.of(context).colorScheme.onBackground)),
+                      trailing: isOwnProfile && myId != null
+                          ? IconButton(
+                                icon: Icon(Icons.remove_circle, color: Theme.of(context).colorScheme.error),
+                              tooltip: 'Takipçiden Çıkar',
+                              onPressed: () async {
+                                // Kendi profilindeysen takipçiden çıkar
+                                await FirebaseFirestore.instance.collection('users').doc(myId).update({
+                                  'followers': FieldValue.arrayRemove([followerId])
+                                });
+                                // İstersen karşı tarafın following listesinden de çıkarabilirsin
+                                await FirebaseFirestore.instance.collection('users').doc(followerId).update({
+                                  'following': FieldValue.arrayRemove([myId])
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Takipçi çıkarıldı.')));
+                              },
+                            )
+                          : null,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserProfilePage(userId: followerId),
+                          ),
+                        );
+                      },
                       ),
                     );
                   },
@@ -696,11 +698,11 @@ class FriendsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Arkadaşlar'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
       ),
       body: friends.isEmpty
@@ -721,11 +723,11 @@ class FriendsPage extends StatelessWidget {
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 5,
                             offset: const Offset(0, 2),
@@ -733,39 +735,39 @@ class FriendsPage extends StatelessWidget {
                         ],
                       ),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                      leading: CircleAvatar(
+                        backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
                               ? CachedNetworkImageProvider(profileImageUrl)
-                              : null,
-                          backgroundColor: Colors.grey[300],
-                          child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                              ? const Icon(Icons.person)
-                              : null,
-                        ),
-                        title: Text(username, style: const TextStyle(color: Colors.black87)),
-                        trailing: isOwnProfile && myId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.person_remove, color: Colors.red),
-                                tooltip: 'Arkadaşlıktan Çıkar',
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance.collection('users').doc(myId).update({
-                                    'friends': FieldValue.arrayRemove([friendId])
-                                  });
-                                  await FirebaseFirestore.instance.collection('users').doc(friendId).update({
-                                    'friends': FieldValue.arrayRemove([myId])
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Arkadaşlıktan çıkarıldı.')));
-                                },
-                              )
                             : null,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UserProfilePage(userId: friendId),
-                            ),
-                          );
-                        },
+                          backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                        title: Text(username, style: TextStyle(color: Theme.of(context).colorScheme.onBackground)),
+                      trailing: isOwnProfile && myId != null
+                          ? IconButton(
+                                icon: Icon(Icons.person_remove, color: Theme.of(context).colorScheme.error),
+                              tooltip: 'Arkadaşlıktan Çıkar',
+                              onPressed: () async {
+                                await FirebaseFirestore.instance.collection('users').doc(myId).update({
+                                  'friends': FieldValue.arrayRemove([friendId])
+                                });
+                                await FirebaseFirestore.instance.collection('users').doc(friendId).update({
+                                  'friends': FieldValue.arrayRemove([myId])
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Arkadaşlıktan çıkarıldı.')));
+                              },
+                            )
+                          : null,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserProfilePage(userId: friendId),
+                          ),
+                        );
+                      },
                       ),
                     );
                   },
@@ -786,11 +788,11 @@ class FollowingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Takip Edilenler'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
       ),
       body: following.isEmpty
@@ -811,11 +813,11 @@ class FollowingPage extends StatelessWidget {
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             spreadRadius: 1,
                             blurRadius: 5,
                             offset: const Offset(0, 2),
@@ -823,39 +825,39 @@ class FollowingPage extends StatelessWidget {
                         ],
                       ),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                      leading: CircleAvatar(
+                        backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
                               ? CachedNetworkImageProvider(profileImageUrl)
-                              : null,
-                          backgroundColor: Colors.grey[300],
-                          child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                              ? const Icon(Icons.person)
-                              : null,
-                        ),
-                        title: Text(username, style: const TextStyle(color: Colors.black87)),
-                        trailing: isOwnProfile && myId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                tooltip: 'Takipten Çıkar',
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance.collection('users').doc(myId).update({
-                                    'following': FieldValue.arrayRemove([followingId])
-                                  });
-                                  await FirebaseFirestore.instance.collection('users').doc(followingId).update({
-                                    'followers': FieldValue.arrayRemove([myId])
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Takipten çıkarıldı.')));
-                                },
-                              )
                             : null,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UserProfilePage(userId: followingId),
-                            ),
-                          );
-                        },
+                          backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                        title: Text(username, style: TextStyle(color: Theme.of(context).colorScheme.onBackground)),
+                      trailing: isOwnProfile && myId != null
+                          ? IconButton(
+                                icon: Icon(Icons.remove_circle, color: Theme.of(context).colorScheme.error),
+                              tooltip: 'Takipten Çıkar',
+                              onPressed: () async {
+                                await FirebaseFirestore.instance.collection('users').doc(myId).update({
+                                  'following': FieldValue.arrayRemove([followingId])
+                                });
+                                await FirebaseFirestore.instance.collection('users').doc(followingId).update({
+                                  'followers': FieldValue.arrayRemove([myId])
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Takipten çıkarıldı.')));
+                              },
+                            )
+                          : null,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserProfilePage(userId: followingId),
+                          ),
+                        );
+                      },
                       ),
                     );
                   },

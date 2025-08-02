@@ -15,6 +15,8 @@ import 'webrtc_call_service.dart';
 import 'matching_service.dart';
 import 'matching_waiting_page.dart';
 import 'online_users_page.dart';
+import 'settings_page.dart';
+import 'theme_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -124,14 +126,14 @@ class _HomePageState extends State<HomePage> {
           final callId = change.doc.id;
           final callerId = data['callerId'] as String;
           final callerName = data['callerName'] as String? ?? 'Bilinmeyen';
-
-          setState(() {
+        
+        setState(() {
             _incomingCallId = callId;
             _incomingCallerId = callerId;
-            _incomingCallerName = callerName;
-            _isIncomingCallDialogVisible = true;
-          });
-
+          _incomingCallerName = callerName;
+          _isIncomingCallDialogVisible = true;
+        });
+        
           _showIncomingCallDialog(callId, callerName);
         }
       }
@@ -175,9 +177,9 @@ class _HomePageState extends State<HomePage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              setState(() {
-                _isIncomingCallDialogVisible = false;
-              });
+                setState(() {
+                  _isIncomingCallDialogVisible = false;
+                });
               
               Navigator.push(
                 context,
@@ -190,15 +192,15 @@ class _HomePageState extends State<HomePage> {
               );
             },
             child: const Text('Kabul Et'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary),
           ),
           TextButton(
             onPressed: () async {
               // Çağrıyı reddetmek için dokümanı sil
               await FirebaseFirestore.instance.collection('calls').doc(callId).delete();
-              setState(() {
-                _isIncomingCallDialogVisible = false;
-              });
+                setState(() {
+                  _isIncomingCallDialogVisible = false;
+                });
               Navigator.of(context).pop();
             },
             child: const Text('Reddet'),
@@ -288,66 +290,80 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser!;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        elevation: 0,
-        actions: [
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, isDarkMode, child) {
+        return Scaffold(
+          appBar: AppBar(
+            elevation: 0,
+            actions: [
           IconButton(
-            icon: Icon(Icons.person, color: Colors.white),
+            icon: Icon(Icons.settings, color: Theme.of(context).colorScheme.onPrimary),
+            tooltip: 'Ayarlar',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimary),
             tooltip: 'Profil',
             onPressed: () {
-              final myId = FirebaseAuth.instance.currentUser?.uid;
-              if (myId != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
+                      final myId = FirebaseAuth.instance.currentUser?.uid;
+                      if (myId != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
                     builder: (context) => ProfilePage(),
-                  ),
-                );
-              }
-            },
+                          ),
+                        );
+                      }
+                    },
           ),
           Stack(
             children: [
               IconButton(
-                icon: Icon(Icons.message, color: Colors.white),
+                icon: Icon(Icons.message, color: Theme.of(context).colorScheme.onPrimary),
                 tooltip: 'Mesajlar',
                 onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => MessagesPage()));
                 },
               ),
               if (_unreadMessageCount > 0)
-                Positioned(
+                        Positioned(
                   right: 8,
                   top: 8,
-                  child: Container(
+                          child: Container(
                     padding: EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                              color: Theme.of(context).colorScheme.error,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     constraints: BoxConstraints(
                       minWidth: 16,
                       minHeight: 16,
-                    ),
-                    child: Text(
+                            ),
+                            child: Text(
                       _unreadMessageCount.toString(),
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
+                            ),
+                          ),
+                        ),
+                    ],
           ),
         ],
       ),
-      backgroundColor: Colors.deepPurple.shade50,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -362,8 +378,8 @@ class _HomePageState extends State<HomePage> {
                 icon: Icon(Icons.shuffle, size: 32),
                 label: Text('Bağlan', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
-                  foregroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   elevation: 4,
                   padding: EdgeInsets.symmetric(vertical: 12),
@@ -384,7 +400,7 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 32),
           // Çevrimiçi kullanıcılar butonu
-          Padding(
+              Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: SizedBox(
               width: double.infinity,
@@ -393,8 +409,8 @@ class _HomePageState extends State<HomePage> {
                 icon: Icon(Icons.people_rounded, size: 24),
                 label: Text('Çevrimiçi Kullanıcılar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple.shade600,
-                  foregroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 4,
                   padding: EdgeInsets.symmetric(vertical: 12),
@@ -414,28 +430,28 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: [
-                Icon(Icons.trending_up, color: Colors.deepPurple, size: 28),
+                Icon(Icons.trending_up, color: Theme.of(context).colorScheme.primary, size: 28),
                 const SizedBox(width: 8),
-                Text('En Aktif Kullanıcılar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple.shade700)),
+                Text('En Aktif Kullanıcılar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
               ],
             ),
           ),
           const SizedBox(height: 16),
           // En çok aktif kullanıcılar listesi
-          Expanded(
+              Expanded(
             child: _isLoadingActiveUsers
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                          valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                         ),
                         SizedBox(height: 16),
                         Text(
                           'Kullanıcılar yükleniyor...',
                           style: TextStyle(
-                            color: Colors.deepPurple,
+                            color: Theme.of(context).colorScheme.primary,
                             fontSize: 16,
                           ),
                         ),
@@ -450,11 +466,11 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               padding: EdgeInsets.all(24),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.deepPurple.withOpacity(0.1),
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                     spreadRadius: 0,
                                     blurRadius: 12,
                                     offset: Offset(0, 4),
@@ -464,7 +480,7 @@ class _HomePageState extends State<HomePage> {
                               child: Icon(
                                 Icons.people_outline,
                                 size: 64,
-                                color: Colors.deepPurple.shade300,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                             ),
                             SizedBox(height: 24),
@@ -473,7 +489,7 @@ class _HomePageState extends State<HomePage> {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.deepPurple.shade700,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                             ),
                             SizedBox(height: 8),
@@ -482,7 +498,7 @@ class _HomePageState extends State<HomePage> {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.deepPurple.shade500,
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
                               ),
                             ),
                           ],
@@ -490,7 +506,7 @@ class _HomePageState extends State<HomePage> {
                       )
                     : RefreshIndicator(
                         onRefresh: _loadMostActiveUsers,
-                        color: Colors.deepPurple,
+                        color: Theme.of(context).colorScheme.primary,
                         child: ListView.builder(
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           itemCount: _mostActiveUsers.length,
@@ -506,8 +522,8 @@ class _HomePageState extends State<HomePage> {
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    Colors.white,
-                                    Colors.grey.shade50,
+                                    Theme.of(context).colorScheme.onPrimary,
+                                    Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -515,7 +531,7 @@ class _HomePageState extends State<HomePage> {
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.deepPurple.withOpacity(0.1),
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                     spreadRadius: 0,
                                     blurRadius: 12,
                                     offset: Offset(0, 4),
@@ -529,7 +545,7 @@ class _HomePageState extends State<HomePage> {
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.grey.withOpacity(0.2),
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
                                         spreadRadius: 0,
                                         blurRadius: 8,
                                         offset: Offset(0, 2),
@@ -541,14 +557,14 @@ class _HomePageState extends State<HomePage> {
                                     backgroundImage: userImage != null
                                         ? CachedNetworkImageProvider(userImage)
                                         : null,
-                                    backgroundColor: userImage == null ? Colors.deepPurple.shade100 : null,
+                                    backgroundColor: userImage == null ? Theme.of(context).colorScheme.primary.withOpacity(0.2) : null,
                                     child: userImage == null
                                         ? Text(
                                             userName.isNotEmpty ? userName[0].toUpperCase() : '?',
                                             style: TextStyle(
                                               fontSize: 20,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.deepPurple.shade700,
+                                              color: Theme.of(context).colorScheme.primary,
                                             ),
                                           )
                                         : null,
@@ -559,7 +575,7 @@ class _HomePageState extends State<HomePage> {
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.deepPurple.shade800,
+                                    color: Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
                                 subtitle: Column(
@@ -569,7 +585,7 @@ class _HomePageState extends State<HomePage> {
                                       city,
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: Colors.grey.shade600,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                       ),
                                     ),
                                     SizedBox(height: 4),
@@ -577,23 +593,23 @@ class _HomePageState extends State<HomePage> {
                                       'Son aktif: ${_formatLastActive(lastActive)}',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
+              ),
+            ],
+          ),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: [
+            children: [
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: Colors.deepPurple.withOpacity(0.1),
+                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: IconButton(
                                         icon: Icon(
                                           Icons.chat_bubble_outline,
-                                          color: Colors.deepPurple,
+                                          color: Theme.of(context).colorScheme.primary,
                                           size: 24,
                                         ),
                                         onPressed: () => _startChat(user['id'], userName),
@@ -603,29 +619,31 @@ class _HomePageState extends State<HomePage> {
                                     SizedBox(width: 8),
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: Colors.deepPurple.withOpacity(0.1),
+                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: IconButton(
                                         icon: Icon(
                                           Icons.person_outline,
-                                          color: Colors.deepPurple,
+                                          color: Theme.of(context).colorScheme.primary,
                                           size: 24,
                                         ),
                                         onPressed: () => _viewProfile(user['id']),
                                         tooltip: 'Profili Görüntüle',
-                                      ),
-                                    ),
-                                  ],
+                          ),
+                        ),
+                    ],
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                  );
+                },
+              ),
                       ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

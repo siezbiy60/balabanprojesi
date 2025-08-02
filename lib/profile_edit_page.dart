@@ -61,7 +61,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     } catch (e) {
       print('Kullanıcı verileri yüklenemedi: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Veriler yüklenemedi: $e')),
+        SnackBar(
+          content: Text('Veriler yüklenemedi: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -86,7 +89,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     } catch (e) {
       print('Resim seçme hatası: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Resim seçilemedi: $e')),
+        SnackBar(
+          content: Text('Resim seçilemedi: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
     }
   }
@@ -111,7 +117,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     } catch (e) {
       print('Resim yükleme hatası: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Resim yüklenemedi: $e')),
+        SnackBar(
+          content: Text('Resim yüklenemedi: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
       return null;
     }
@@ -145,9 +154,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Profil başarıyla güncellendi!'),
-          backgroundColor: Colors.green,
+          backgroundColor: Theme.of(context).colorScheme.secondary,
         ),
       );
 
@@ -157,7 +166,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Profil güncellenemedi: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     } finally {
@@ -169,11 +178,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: Theme.of(context).colorScheme.background,
         appBar: AppBar(
           title: const Text('Profili Düzenle'),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
         ),
         body: const Center(
           child: CircularProgressIndicator(),
@@ -182,22 +191,22 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Profili Düzenle'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
         actions: [
           if (_isSaving)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16.0),
               child: SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.onPrimary),
                 ),
               ),
             ),
@@ -222,7 +231,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.withOpacity(0.3),
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                               spreadRadius: 2,
                               blurRadius: 10,
                               offset: const Offset(0, 4),
@@ -236,9 +245,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                               : (_currentProfileImageUrl != null && _currentProfileImageUrl!.isNotEmpty)
                                   ? NetworkImage(_currentProfileImageUrl!)
                                   : null,
-                          backgroundColor: Colors.grey[300],
+                          backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                           child: (_selectedImage == null && (_currentProfileImageUrl == null || _currentProfileImageUrl!.isEmpty))
-                              ? const Icon(Icons.person, size: 80, color: Colors.grey)
+                              ? Icon(Icons.person, size: 80, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))
                               : null,
                         ),
                       ),
@@ -247,20 +256,20 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         right: 0,
                         child: Container(
                           padding: const EdgeInsets.all(12),
-                          decoration: const BoxDecoration(
-                            color: Colors.blue,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black26,
+                                color: Theme.of(context).colorScheme.onBackground.withOpacity(0.26),
                                 blurRadius: 8,
                                 offset: Offset(0, 2),
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.camera_alt,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                             size: 24,
                           ),
                         ),
@@ -271,7 +280,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               ),
               Text(
                 'Resme tıklayarak değiştir',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontSize: 14),
               ),
               const SizedBox(height: 32),
 
@@ -279,11 +288,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       spreadRadius: 1,
                       blurRadius: 10,
                       offset: const Offset(0, 2),
@@ -292,11 +301,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 child: TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'İsim Soyisim *',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    prefixIcon: Icon(Icons.person, color: Colors.blue),
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -311,11 +320,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       spreadRadius: 1,
                       blurRadius: 10,
                       offset: const Offset(0, 2),
@@ -324,11 +333,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 child: TextFormField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Kullanıcı Adı *',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    prefixIcon: Icon(Icons.alternate_email, color: Colors.blue),
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.alternate_email, color: Theme.of(context).colorScheme.primary),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -346,11 +355,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       spreadRadius: 1,
                       blurRadius: 10,
                       offset: const Offset(0, 2),
@@ -359,11 +368,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 child: TextFormField(
                   controller: _bioController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Hakkımda',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    prefixIcon: Icon(Icons.info, color: Colors.blue),
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.info, color: Theme.of(context).colorScheme.primary),
                   ),
                   maxLines: 3,
                 ),
@@ -373,11 +382,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       spreadRadius: 1,
                       blurRadius: 10,
                       offset: const Offset(0, 2),
@@ -386,11 +395,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 child: TextFormField(
                   controller: _cityController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Şehir',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    prefixIcon: Icon(Icons.location_city, color: Colors.blue),
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.location_city, color: Theme.of(context).colorScheme.primary),
                   ),
                 ),
               ),
@@ -399,11 +408,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       spreadRadius: 1,
                       blurRadius: 10,
                       offset: const Offset(0, 2),
@@ -412,11 +421,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 child: TextFormField(
                   controller: _birthDateController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Doğum Tarihi (GG/AA/YYYY)',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    prefixIcon: Icon(Icons.cake, color: Colors.blue),
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.cake, color: Theme.of(context).colorScheme.primary),
                   ),
                   onTap: () async {
                     final date = await showDatePicker(
@@ -438,11 +447,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               Container(
                 margin: const EdgeInsets.only(bottom: 32),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       spreadRadius: 1,
                       blurRadius: 10,
                       offset: const Offset(0, 2),
@@ -451,11 +460,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 ),
                 child: DropdownButtonFormField<String>(
                   value: _selectedGender,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Cinsiyet',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    prefixIcon: Icon(Icons.person_outline, color: Colors.blue),
+                    contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary),
                   ),
                   items: _genders.map((gender) {
                     return DropdownMenuItem(
@@ -479,7 +488,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                       spreadRadius: 1,
                       blurRadius: 10,
                       offset: const Offset(0, 4),
@@ -489,20 +498,20 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 0,
                   ),
                   child: _isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.onPrimary),
                           ),
                         )
                       : const Text(
