@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'chat_page.dart';
 
 class MessagesPage extends StatefulWidget {
+  const MessagesPage({super.key});
+
   @override
   _MessagesPageState createState() => _MessagesPageState();
 }
@@ -24,10 +26,10 @@ class _MessagesPageState extends State<MessagesPage> {
     final currentUserId = _auth.currentUser?.uid;
     if (currentUserId == null) return;
 
+    // Geçici olarak orderBy'ı kaldırıyoruz, index aktif olana kadar
     _messagesStream = _firestore
         .collection('messages')
         .where('participants', arrayContains: currentUserId)
-        .orderBy('timestamp', descending: true)
         .snapshots();
   }
 
@@ -44,6 +46,39 @@ class _MessagesPageState extends State<MessagesPage> {
     }
   }
 
+  // Chat ID'sini oluştur (her iki kullanıcı için aynı olacak)
+  String _generateChatId(String currentUserId, String otherUserId) {
+    final sortedIds = [currentUserId, otherUserId]..sort();
+    return '${sortedIds[0]}_${sortedIds[1]}';
+  }
+
+  // Mesajları okundu olarak işaretle
+  Future<void> _markMessagesAsRead(String otherUserId) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    try {
+      // Bu kullanıcıdan gelen okunmamış mesajları bul ve okundu olarak işaretle
+      final unreadMessages = await _firestore
+          .collection('messages')
+          .where('senderId', isEqualTo: otherUserId)
+          .where('receiverId', isEqualTo: currentUserId)
+          .where('isRead', isEqualTo: false)
+          .get();
+
+      // Batch update ile tüm mesajları güncelle
+      final batch = _firestore.batch();
+      for (var doc in unreadMessages.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      await batch.commit();
+      
+      print('✅ Mesajlar okundu olarak işaretlendi: $otherUserId');
+    } catch (e) {
+      print('❌ Mesajları okundu olarak işaretleme hatası: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser;
@@ -53,10 +88,10 @@ class _MessagesPageState extends State<MessagesPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Giriş yapılmamış'),
+              const Text('Giriş yapılmamış'),
               ElevatedButton(
                 onPressed: () => Navigator.pushNamed(context, '/login'),
-                child: Text('Giriş Yap'),
+                child: const Text('Giriş Yap'),
               ),
             ],
           ),
@@ -66,15 +101,59 @@ class _MessagesPageState extends State<MessagesPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mesajlar', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue,
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.chat_bubble_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Mesajlar',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.deepPurple,
         elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+        actions: [
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.search, color: Colors.white, size: 24),
+              onPressed: () {
+                // Arama fonksiyonu
+              },
+            ),
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _messagesStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
@@ -82,13 +161,13 @@ class _MessagesPageState extends State<MessagesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error, color: Colors.red, size: 48),
-                  SizedBox(height: 16),
+                  const Icon(Icons.error, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
                   Text('Hata oluştu: ${snapshot.error}'),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _loadMessages,
-                    child: Text('Yenile'),
+                    child: const Text('Yenile'),
                   ),
                 ],
               ),
@@ -96,7 +175,42 @@ class _MessagesPageState extends State<MessagesPage> {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('Henüz mesaj yok.'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.chat_bubble_outline,
+                      size: 64,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Henüz mesaj yok',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Arkadaşlarınızla sohbet etmeye başlayın',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
 
           // Sohbetleri grupla ve son mesajları bul
@@ -117,12 +231,14 @@ class _MessagesPageState extends State<MessagesPage> {
               );
 
               if (otherUserId.isNotEmpty) {
+                // ChatId varsa onu kullan, yoksa otherUserId kullan (geriye uyumluluk için)
+                final chatId = data['chatId'] as String? ?? otherUserId;
                 final messageTimestamp = data['timestamp'] as Timestamp;
-                final existingMessage = latestMessages[otherUserId];
+                final existingMessage = latestMessages[chatId];
                 final existingTimestamp = existingMessage?.get('timestamp') as Timestamp?;
 
                 if (existingTimestamp == null || messageTimestamp.compareTo(existingTimestamp) > 0) {
-                  latestMessages[otherUserId] = message;
+                  latestMessages[chatId] = message;
                 }
               }
             } catch (e) {
@@ -142,8 +258,15 @@ class _MessagesPageState extends State<MessagesPage> {
             itemCount: sortedChats.length,
             itemBuilder: (context, index) {
               final entry = sortedChats[index];
-              final otherUserId = entry.key;
+              final chatId = entry.key;
               final lastMessage = entry.value.data() as Map<String, dynamic>;
+              
+              // ChatId'den otherUserId'yi çıkar
+              final participants = List<String>.from(lastMessage['participants'] ?? []);
+              final otherUserId = participants.firstWhere(
+                (id) => id != currentUser.uid,
+                orElse: () => chatId, // Fallback olarak chatId kullan
+              );
 
               final isRead = lastMessage['isRead'] as bool? ?? false;
               final isSentByMe = lastMessage['senderId'] as String == currentUser.uid;
@@ -160,42 +283,123 @@ class _MessagesPageState extends State<MessagesPage> {
                   final username = userData['username'] as String? ?? 'Bilinmeyen';
                   final profileImageUrl = userData['profileImageUrl'] as String?;
 
-                  return Card(
-                    margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white,
+                          Colors.grey.shade50,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.deepPurple.withOpacity(0.1),
+                          spreadRadius: 0,
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: profileImageUrl != null
-                            ? NetworkImage(profileImageUrl)
-                            : null,
-                        child: profileImageUrl == null
-                            ? Text(username.isNotEmpty ? username[0] : '?')
-                            : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      leading: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.2),
+                              spreadRadius: 0,
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundImage: profileImageUrl != null
+                              ? NetworkImage(profileImageUrl)
+                              : null,
+                          backgroundColor: profileImageUrl == null ? Colors.blue[100] : null,
+                          child: profileImageUrl == null
+                              ? Text(
+                                  username.isNotEmpty ? username[0].toUpperCase() : '?',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue[700],
+                                  ),
+                                )
+                              : null,
+                        ),
                       ),
-                      title: Text(username),
-                      subtitle: Text(
-                        isSentByMe ? 'Sen: $messageText' : messageText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      title: Row(
                         children: [
+                          Expanded(
+                            child: Text(
+                              username,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
                           if (timestamp != null)
                             Text(
                               DateFormat('HH:mm').format(timestamp.toDate()),
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
                             ),
-                          if (!isRead && !isSentByMe)
-                            Icon(Icons.circle, color: Colors.blue, size: 12),
                         ],
                       ),
-                      onTap: () {
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  isSentByMe ? 'Sen: $messageText' : messageText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ),
+                              if (!isRead && !isSentByMe) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.blue,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                      onTap: () async {
+                        // Mesajları okundu olarak işaretle
+                        await _markMessagesAsRead(otherUserId);
+                        
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ChatPage(
                               receiverId: otherUserId,
-                              receiverUsername: username,
+                              receiverName: username,
                             ),
                           ),
                         );

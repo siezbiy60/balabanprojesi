@@ -1,210 +1,346 @@
-import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'home_page.dart';
 
 class ProfileSetupPage extends StatefulWidget {
+  const ProfileSetupPage({Key? key}) : super(key: key);
+
   @override
-  _ProfileSetupPageState createState() => _ProfileSetupPageState();
+  State<ProfileSetupPage> createState() => _ProfileSetupPageState();
 }
 
 class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _birthDateController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _bioController = TextEditingController();
-  String? _gender;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _surnameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
   String? _selectedCity;
-  final List<String> _cities = [
-    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya', 'Artvin', 'Aydın',
-    'Balıkesir', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı',
-    'Çorum', 'Denizli', 'Diyarbakır', 'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir',
-    'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Isparta', 'Mersin', 'İstanbul',
-    'İzmir', 'Kars', 'Kastamonu', 'Kayseri', 'Kırklareli', 'Kırşehir', 'Kocaeli', 'Konya',
-    'Kütahya', 'Malatya', 'Manisa', 'Kahramanmaraş', 'Mardin', 'Muğla', 'Muş', 'Nevşehir',
-    'Niğde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 'Tekirdağ',
-    'Tokat', 'Trabzon', 'Tunceli', 'Şanlıurfa', 'Uşak', 'Van', 'Yozgat', 'Zonguldak',
-    'Aksaray', 'Bayburt', 'Karaman', 'Kırıkkale', 'Batman', 'Şırnak', 'Bartın', 'Ardahan',
-    'Iğdır', 'Yalova', 'Karabük', 'Kilis', 'Osmaniye', 'Düzce'
-  ];
-  File? _image;
-  final _picker = ImagePicker();
+  String? _gender;
   bool _isLoading = false;
 
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-    }
-  }
+  final List<String> _cities = [
+    'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Adana', 'Antalya', 'Konya', 'Gaziantep',
+    'Şanlıurfa', 'Kocaeli', 'Mersin', 'Diyarbakır', 'Kayseri', 'Samsun', 'Sakarya',
+    'Eskişehir', 'Trabzon', 'Erzurum', 'Malatya', 'Van', 'Ordu', 'Denizli', 'Balıkesir',
+    'Manisa', 'Kahramanmaraş', 'Aydın', 'Tekirdağ', 'Hatay', 'Çorum', 'Afyon', 'Elazığ',
+    'Sivas', 'Kütahya', 'Çanakkale', 'Aksaray', 'Isparta', 'Uşak', 'Edirne', 'Tokat',
+    'Zonguldak', 'Kırıkkale', 'Batman', 'Kırşehir', 'Kastamonu', 'Yozgat', 'Karaman',
+    'Kars', 'Amasya', 'Nevşehir', 'Rize', 'Bolu', 'Bilecik', 'Düzce', 'Osmaniye',
+    'Yalova', 'Karabük', 'Kilis', 'Bartın', 'Ardahan', 'Iğdır', 'Sinop', 'Bayburt',
+    'Gümüşhane', 'Tunceli', 'Hakkari', 'Şırnak', 'Artvin', 'Bingöl', 'Bitlis', 'Muş',
+    'Ağrı', 'Niğde', 'Giresun', 'Çankırı', 'Burdur', 'Erzincan', 'Aksaray', 'Kilis',
+    'Aksaray', 'Kilis', 'Osmaniye', 'Düzce'
+  ];
 
-  Future<String?> _uploadImage(File image, String userId) async {
-    try {
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('profile_images')
-          .child('$userId.jpg');
-      await ref.putFile(image);
-      return await ref.getDownloadURL();
-    } catch (e) {
-      print('Resim yükleme hatası: $e');
-      return null;
-    }
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _surnameController.dispose();
+    _usernameController.dispose();
+    _bioController.dispose();
+    super.dispose();
   }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() { _isLoading = true; });
+    
     try {
       final user = FirebaseAuth.instance.currentUser!;
-      String? profileImageUrl;
-      if (_image != null) {
-        profileImageUrl = await _uploadImage(_image!, user.uid);
-      }
-
-      // FCM token al
-      String? fcmToken = await FirebaseMessaging.instance.getToken();
-
+      final fullName = '${_nameController.text.trim()} ${_surnameController.text.trim()}';
+      
+      // Debug bilgisi
+      print('=== PROFILE SETUP DEBUG ===');
+      print('User ID: ${user.uid}');
+      print('Full Name: $fullName');
+      print('Username: ${_usernameController.text.trim()}');
+      print('City: $_selectedCity');
+      print('Gender: $_gender');
+      print('Bio: ${_bioController.text.trim()}');
+      
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'name': fullName,
         'username': _usernameController.text.trim(),
-        'name': _nameController.text.trim(),
-        'birthDate': _birthDateController.text.trim(),
         'city': _selectedCity,
         'gender': _gender,
-        'profileImageUrl': profileImageUrl,
-        'email': user.email,
-        'createdAt': FieldValue.serverTimestamp(),
-        'fcmToken': fcmToken, // Yeni: FCM token
         'bio': _bioController.text.trim(),
-      });
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastActive': FieldValue.serverTimestamp(),
+        'isOnline': true,
+        'friends': [],
+        'followers': [],
+        'following': [],
+        'friendRequests': [],
+      }, SetOptions(merge: true));
+      
+      print('Profil başarıyla kaydedildi!');
+      
+      setState(() { _isLoading = false; });
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      }
     } catch (e) {
+      print('Profil kaydetme hatası: $e');
+      setState(() { _isLoading = false; });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profil kaydedilemedi: $e')),
       );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Profil Oluştur')),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text('Profil Kurulumu'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              GestureDetector(
-                onTap: _pickImage,
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundImage: _image != null ? FileImage(_image!) : null,
-                  child: _image == null
-                      ? Icon(Icons.person, size: 50, color: Colors.white)
-                      : null,
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 20),
+                    // Başlık
+                    const Text(
+                      'Profilinizi Tamamlayın',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Diğer kullanıcılar sizi daha iyi tanıyabilir',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Ad
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Ad *',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                          prefixIcon: Icon(Icons.person, color: Colors.blue),
+                        ),
+                        validator: (value) => value == null || value.isEmpty ? 'Ad giriniz' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Soyad
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextFormField(
+                        controller: _surnameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Soyad *',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                          prefixIcon: Icon(Icons.person_outline, color: Colors.blue),
+                        ),
+                        validator: (value) => value == null || value.isEmpty ? 'Soyad giriniz' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Kullanıcı Adı
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextFormField(
+                        controller: _usernameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Kullanıcı Adı *',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                          prefixIcon: Icon(Icons.alternate_email, color: Colors.blue),
+                        ),
+                        validator: (value) => value == null || value.isEmpty ? 'Kullanıcı adı giriniz' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Şehir
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedCity,
+                        items: _cities.map((city) => DropdownMenuItem(
+                          value: city,
+                          child: Text(city),
+                        )).toList(),
+                        onChanged: (value) => setState(() => _selectedCity = value),
+                        decoration: const InputDecoration(
+                          labelText: 'Şehir *',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                          prefixIcon: Icon(Icons.location_city, color: Colors.blue),
+                        ),
+                        validator: (value) => value == null || value.isEmpty ? 'Şehir seçiniz' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Cinsiyet
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: _gender,
+                        items: ['Erkek', 'Kadın', 'Diğer'].map((gender) => DropdownMenuItem(
+                          value: gender,
+                          child: Text(gender),
+                        )).toList(),
+                        onChanged: (value) => setState(() => _gender = value),
+                        decoration: const InputDecoration(
+                          labelText: 'Cinsiyet *',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                          prefixIcon: Icon(Icons.person_outline, color: Colors.blue),
+                        ),
+                        validator: (value) => value == null || value.isEmpty ? 'Cinsiyet seçiniz' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Biyografi
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextFormField(
+                        controller: _bioController,
+                        decoration: const InputDecoration(
+                          labelText: 'Biyografi',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                          prefixIcon: Icon(Icons.info, color: Colors.blue),
+                        ),
+                        maxLines: 3,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    // Kaydet Butonu
+                    Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.3),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _saveProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Profili Kaydet',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-              SizedBox(height: 16),
-              TextFormField(
-                controller: _usernameController,
-                decoration: InputDecoration(labelText: 'Kullanıcı Adı'),
-                validator: (value) =>
-                value!.isEmpty ? 'Kullanıcı adı gerekli' : null,
-              ),
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'İsim Soyisim'),
-                validator: (value) =>
-                value!.isEmpty ? 'İsim soyisim gerekli' : null,
-              ),
-              TextFormField(
-                controller: _birthDateController,
-                decoration: InputDecoration(labelText: 'Doğum Tarihi (GG/AA/YYYY)'),
-                readOnly: true,
-                onTap: () async {
-                  FocusScope.of(context).requestFocus(FocusNode());
-                  DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime(2000, 1, 1),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) {
-                    _birthDateController.text =
-                        '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
-                  }
-                },
-                validator: (value) => value!.isEmpty ? 'Doğum tarihi gerekli' : null,
-              ),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Şehir'),
-                value: _selectedCity,
-                items: _cities.map((city) => DropdownMenuItem(
-                  value: city,
-                  child: Text(city),
-                )).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCity = value;
-                    _cityController.text = value ?? '';
-                  });
-                },
-                validator: (value) => value == null || value.isEmpty ? 'Şehir seçiniz' : null,
-              ),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Cinsiyet'),
-                value: _gender,
-                items: ['Erkek', 'Kadın', 'Diğer']
-                    .map((gender) => DropdownMenuItem(
-                  value: gender,
-                  child: Text(gender),
-                ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _gender = value;
-                  });
-                },
-                validator: (value) => value == null ? 'Cinsiyet seçiniz' : null,
-              ),
-              TextFormField(
-                controller: _bioController,
-                decoration: InputDecoration(labelText: 'Hakkında (Bio)'),
-                maxLines: 2,
-                maxLength: 120,
-                validator: (value) => value!.length > 120 ? 'En fazla 120 karakter' : null,
-              ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _saveProfile,
-                child: Text('Kaydet'),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }

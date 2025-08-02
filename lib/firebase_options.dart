@@ -52,6 +52,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '914532151784',
     projectId: 'balabanproje',
     storageBucket: 'balabanproje.firebasestorage.app',
+    databaseURL: 'https://balabanproje-default-rtdb.europe-west1.firebasedatabase.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -61,6 +62,7 @@ class DefaultFirebaseOptions {
     projectId: 'balabanproje',
     storageBucket: 'balabanproje.firebasestorage.app',
     iosBundleId: 'com.example.balabanproje',
+    databaseURL: 'https://balabanproje-default-rtdb.europe-west1.firebasedatabase.app',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
@@ -71,5 +73,6 @@ class DefaultFirebaseOptions {
     authDomain: 'balabanproje.firebaseapp.com',
     storageBucket: 'balabanproje.appspot.com',
     measurementId: 'G-22M35XW0FV',
+    databaseURL: 'https://balabanproje-default-rtdb.europe-west1.firebasedatabase.app',
   );
 }

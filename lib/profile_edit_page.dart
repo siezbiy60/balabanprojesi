@@ -1,218 +1,530 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileEditPage extends StatefulWidget {
+  const ProfileEditPage({super.key});
+
   @override
-  _ProfileEditPageState createState() => _ProfileEditPageState();
+  State<ProfileEditPage> createState() => _ProfileEditPageState();
 }
 
 class _ProfileEditPageState extends State<ProfileEditPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _birthDateController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _bioController = TextEditingController();
-  String? _gender;
-  String? _selectedCity;
-  final List<String> _cities = [
-    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya', 'Artvin', 'Aydın',
-    'Balıkesir', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı',
-    'Çorum', 'Denizli', 'Diyarbakır', 'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir',
-    'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Isparta', 'Mersin', 'İstanbul',
-    'İzmir', 'Kars', 'Kastamonu', 'Kayseri', 'Kırklareli', 'Kırşehir', 'Kocaeli', 'Konya',
-    'Kütahya', 'Malatya', 'Manisa', 'Kahramanmaraş', 'Mardin', 'Muğla', 'Muş', 'Nevşehir',
-    'Niğde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 'Tekirdağ',
-    'Tokat', 'Trabzon', 'Tunceli', 'Şanlıurfa', 'Uşak', 'Van', 'Yozgat', 'Zonguldak',
-    'Aksaray', 'Bayburt', 'Karaman', 'Kırıkkale', 'Batman', 'Şırnak', 'Bartın', 'Ardahan',
-    'Iğdır', 'Yalova', 'Karabük', 'Kilis', 'Osmaniye', 'Düzce'
-  ];
-  File? _image;
-  String? _profileImageUrl;
+  final _cityController = TextEditingController();
+  final _birthDateController = TextEditingController();
+  
+  String? _selectedGender;
+  String? _currentProfileImageUrl;
+  File? _selectedImage;
   bool _isLoading = false;
+  bool _isSaving = false;
+
+  final List<String> _genders = ['Erkek', 'Kadın', 'Diğer'];
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _loadUserData();
   }
 
-  Future<void> _loadProfile() async {
-    final user = FirebaseAuth.instance.currentUser!;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final data = doc.data() as Map<String, dynamic>?;
-    if (data != null) {
-      _nameController.text = data['name'] ?? '';
-      _birthDateController.text = data['birthDate'] ?? '';
-      _bioController.text = data['bio'] ?? '';
-      _gender = data['gender'] ?? null;
-      _selectedCity = data['city'] ?? null;
-      _profileImageUrl = data['profileImageUrl'];
-      setState(() {});
+  Future<void> _loadUserData() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() {
+          _nameController.text = data['name'] ?? '';
+          _usernameController.text = data['username'] ?? '';
+          _bioController.text = data['bio'] ?? '';
+          _cityController.text = data['city'] ?? '';
+          _birthDateController.text = data['birthDate'] ?? '';
+          _selectedGender = data['gender'];
+          _currentProfileImageUrl = data['profileImageUrl'];
+        });
+      }
+    } catch (e) {
+      print('Kullanıcı verileri yüklenemedi: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Veriler yüklenemedi: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      print('Resim seçme hatası: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Resim seçilemedi: $e')),
+      );
     }
   }
 
-  Future<String?> _uploadImage(File image, String userId) async {
+  Future<String?> _uploadImage() async {
+    if (_selectedImage == null) return _currentProfileImageUrl;
+
     try {
-      final ref = FirebaseStorage.instance
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return null;
+
+      final storageRef = FirebaseStorage.instance
           .ref()
           .child('profile_images')
-          .child('$userId.jpg');
-      await ref.putFile(image);
-      return await ref.getDownloadURL();
+          .child('${user.uid}.jpg');
+
+      final uploadTask = storageRef.putFile(_selectedImage!);
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
     } catch (e) {
       print('Resim yükleme hatası: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Resim yüklenemedi: $e')),
+      );
       return null;
     }
   }
 
-  Future<File?> _compressImage(File file) async {
-    final result = await FlutterImageCompress.compressAndGetFile(
-      file.absolute.path,
-      file.absolute.path + '_compressed.jpg',
-      quality: 70,
-      minWidth: 400,
-      minHeight: 400,
-    );
-    if (result == null) return null;
-    return File(result.path);
-  }
-
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _isLoading = true; });
-    final user = FirebaseAuth.instance.currentUser!;
-    String? imageUrl = _profileImageUrl;
-    if (_image != null) {
-      File uploadFile = _image!;
-      if (!kIsWeb) {
-        final compressed = await _compressImage(_image!);
-        if (compressed != null) uploadFile = compressed;
-      }
-      imageUrl = await _uploadImage(uploadFile, user.uid);
+
+    setState(() => _isSaving = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Resim yükle
+      final imageUrl = await _uploadImage();
+
+      // Profil verilerini güncelle
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'name': _nameController.text.trim(),
+        'username': _usernameController.text.trim(),
+        'bio': _bioController.text.trim(),
+        'city': _cityController.text.trim(),
+        'birthDate': _birthDateController.text.trim(),
+        'gender': _selectedGender,
+        if (imageUrl != null) 'profileImageUrl': imageUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profil başarıyla güncellendi!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context, true); // true = güncelleme yapıldı
+    } catch (e) {
+      print('Profil güncelleme hatası: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Profil güncellenemedi: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isSaving = false);
     }
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-      'name': _nameController.text.trim(),
-      'birthDate': _birthDateController.text.trim(),
-      'city': _selectedCity,
-      'gender': _gender,
-      'bio': _bioController.text.trim(),
-      'profileImageUrl': imageUrl,
-    });
-    setState(() { _isLoading = false; });
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          title: const Text('Profili Düzenle'),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text('Profili Düzenle')),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text('Profili Düzenle'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          if (_isSaving)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: _pickImage,
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundImage: _image != null
-                      ? FileImage(_image!)
-                      : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty)
-                          ? NetworkImage(_profileImageUrl!) as ImageProvider
-                          : null,
-                  child: (_image == null && (_profileImageUrl == null || _profileImageUrl!.isEmpty))
-                      ? Icon(Icons.person, size: 50, color: Colors.white)
-                      : null,
+              // Profil Resmi
+              Container(
+                margin: const EdgeInsets.only(bottom: 24),
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.3),
+                              spreadRadius: 2,
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 80,
+                          backgroundImage: _selectedImage != null
+                              ? FileImage(_selectedImage!)
+                              : (_currentProfileImageUrl != null && _currentProfileImageUrl!.isNotEmpty)
+                                  ? NetworkImage(_currentProfileImageUrl!)
+                                  : null,
+                          backgroundColor: Colors.grey[300],
+                          child: (_selectedImage == null && (_currentProfileImageUrl == null || _currentProfileImageUrl!.isEmpty))
+                              ? const Icon(Icons.person, size: 80, color: Colors.grey)
+                              : null,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'İsim Soyisim'),
-                validator: (value) => value!.isEmpty ? 'İsim soyisim gerekli' : null,
+              Text(
+                'Resme tıklayarak değiştir',
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
-              TextFormField(
-                controller: _birthDateController,
-                decoration: InputDecoration(labelText: 'Doğum Tarihi (GG/AA/YYYY)'),
-                readOnly: true,
-                onTap: () async {
-                  FocusScope.of(context).requestFocus(FocusNode());
-                  DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime(2000, 1, 1),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) {
-                    _birthDateController.text =
-                        '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
-                  }
-                },
-                validator: (value) => value!.isEmpty ? 'Doğum tarihi gerekli' : null,
+              const SizedBox(height: 32),
+
+              // İsim
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'İsim Soyisim *',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.person, color: Colors.blue),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'İsim gerekli';
+                    }
+                    return null;
+                  },
+                ),
               ),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Şehir'),
-                value: _selectedCity,
-                items: _cities.map((city) => DropdownMenuItem(
-                  value: city,
-                  child: Text(city),
-                )).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCity = value;
-                  });
-                },
-                validator: (value) => value == null || value.isEmpty ? 'Şehir seçiniz' : null,
+
+              // Username
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _usernameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Kullanıcı Adı *',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.alternate_email, color: Colors.blue),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Kullanıcı adı gerekli';
+                    }
+                    if (value.trim().length < 3) {
+                      return 'Kullanıcı adı en az 3 karakter olmalı';
+                    }
+                    return null;
+                  },
+                ),
               ),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Cinsiyet'),
-                value: _gender,
-                items: ['Erkek', 'Kadın', 'Diğer']
-                    .map((gender) => DropdownMenuItem(
-                  value: gender,
-                  child: Text(gender),
-                ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _gender = value;
-                  });
-                },
-                validator: (value) => value == null ? 'Cinsiyet seçiniz' : null,
+
+              // Bio
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _bioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Hakkımda',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.info, color: Colors.blue),
+                  ),
+                  maxLines: 3,
+                ),
               ),
-              TextFormField(
-                controller: _bioController,
-                decoration: InputDecoration(labelText: 'Hakkında (Bio)'),
-                maxLines: 2,
-                maxLength: 120,
-                validator: (value) => value!.length > 120 ? 'En fazla 120 karakter' : null,
+
+              // Şehir
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _cityController,
+                  decoration: const InputDecoration(
+                    labelText: 'Şehir',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.location_city, color: Colors.blue),
+                  ),
+                ),
               ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _saveProfile,
-                child: Text('Kaydet'),
+
+              // Doğum Tarihi
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  controller: _birthDateController,
+                  decoration: const InputDecoration(
+                    labelText: 'Doğum Tarihi (GG/AA/YYYY)',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.cake, color: Colors.blue),
+                  ),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().subtract(const Duration(days: 6570)), // 18 yaş
+                      firstDate: DateTime(1900),
+                      lastDate: DateTime.now(),
+                    );
+                    if (date != null) {
+                      _birthDateController.text = 
+                          '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+                    }
+                  },
+                  readOnly: true,
+                ),
+              ),
+
+              // Cinsiyet
+              Container(
+                margin: const EdgeInsets.only(bottom: 32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedGender,
+                  decoration: const InputDecoration(
+                    labelText: 'Cinsiyet',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                    prefixIcon: Icon(Icons.person_outline, color: Colors.blue),
+                  ),
+                  items: _genders.map((gender) {
+                    return DropdownMenuItem(
+                      value: gender,
+                      child: Text(gender),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedGender = value;
+                    });
+                  },
+                ),
+              ),
+
+              // Kaydet Butonu
+              Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.3),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Profili Kaydet',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _bioController.dispose();
+    _cityController.dispose();
+    _birthDateController.dispose();
+    super.dispose();
   }
 } 

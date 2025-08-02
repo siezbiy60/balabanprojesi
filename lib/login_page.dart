@@ -1,10 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'profile_setup_page.dart';
 import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
   _LoginPageState createState() => _LoginPageState();
 }
@@ -14,11 +19,82 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLogin = true;
+  bool _rememberMe = false;
   String? _errorMessage;
   bool _isLoading = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEmail = prefs.getString('saved_email');
+      final savedPassword = prefs.getString('saved_password');
+      final rememberMe = prefs.getBool('remember_me') ?? false;
+      
+      if (rememberMe && savedEmail != null && savedPassword != null) {
+        if (mounted) {
+          setState(() {
+            _emailController.text = savedEmail;
+            _passwordController.text = savedPassword;
+            _rememberMe = true;
+          });
+        }
+      }
+    } catch (e) {
+      print('Kayıtlı bilgiler yüklenemedi: $e');
+      // Web için localStorage kullanmayı dene
+      try {
+        // Web için localStorage kontrolü
+        if (kIsWeb) {
+          // Web'de SharedPreferences yerine localStorage kullan
+          print('Web platformu tespit edildi, localStorage kullanılıyor');
+        }
+      } catch (webError) {
+        print('Web localStorage hatası: $webError');
+      }
+    }
+  }
+
+  Future<void> _saveCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberMe) {
+        await prefs.setString('saved_email', _emailController.text.trim());
+        await prefs.setString('saved_password', _passwordController.text.trim());
+        await prefs.setBool('remember_me', true);
+      } else {
+        await prefs.remove('saved_email');
+        await prefs.remove('saved_password');
+        await prefs.setBool('remember_me', false);
+      }
+    } catch (e) {
+      print('Bilgiler kaydedilemedi: $e');
+    }
+  }
+
+  Future<void> _saveFcmToken(String userId) async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await _firestore.collection('users').doc(userId).update({
+          'fcmToken': token,
+        });
+        print('✅ FCM Token kaydedildi: ${token.substring(0, 20)}...');
+      } else {
+        print('❌ FCM Token alınamadı');
+      }
+    } catch (e) {
+      print('❌ FCM Token kaydetme hatası: $e');
+    }
+  }
 
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
@@ -38,6 +114,13 @@ class _LoginPageState extends State<LoginPage> {
 
       if (userCredential.user?.emailVerified ?? false) {
         print('E-posta doğrulanmış, profil kontrol ediliyor...');
+        
+        // Bilgileri kaydet
+        await _saveCredentials();
+        
+        // FCM Token'ı kaydet
+        await _saveFcmToken(userCredential.user!.uid);
+        
         DocumentSnapshot userDoc =
         await _firestore.collection('users').doc(userCredential.user!.uid).get();
         if (userDoc.exists) {
@@ -56,24 +139,32 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         print('E-posta doğrulanmamış, doğrulama e-postası gönderiliyor...');
         await userCredential.user?.sendEmailVerification();
-        setState(() {
-          _errorMessage = 'Lütfen e-postanızı doğrulayın. Doğrulama linki gönderildi.';
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Lütfen e-postanızı doğrulayın. Doğrulama linki gönderildi.';
+          });
+        }
       }
     } on FirebaseAuthException catch (e) {
       print('FirebaseAuth hatası: ${e.code} - ${e.message}');
-      setState(() {
-        _errorMessage = _getErrorMessage(e.code);
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = _getErrorMessage(e.code);
+        });
+      }
     } catch (e) {
       print('Genel hata: $e');
-      setState(() {
-        _errorMessage = 'Bir hata oluştu: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Bir hata oluştu: $e';
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -93,23 +184,31 @@ class _LoginPageState extends State<LoginPage> {
       );
       print('Kayıt başarılı, kullanıcı: ${userCredential.user?.uid}');
       await userCredential.user?.sendEmailVerification();
-      setState(() {
-        _errorMessage = 'Kayıt başarılı! Lütfen e-postanıza gelen doğrulama linkine tıklayın.';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Kayıt başarılı! Lütfen e-postanıza gelen doğrulama linkine tıklayın.';
+        });
+      }
     } on FirebaseAuthException catch (e) {
       print('FirebaseAuth hatası: ${e.code} - ${e.message}');
-      setState(() {
-        _errorMessage = _getErrorMessage(e.code);
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = _getErrorMessage(e.code);
+        });
+      }
     } catch (e) {
       print('Genel hata: $e');
-      setState(() {
-        _errorMessage = 'Bir hata oluştu: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Bir hata oluştu: $e';
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -143,22 +242,36 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               TextFormField(
                 controller: _emailController,
-                decoration: InputDecoration(labelText: 'E-posta'),
+                decoration: const InputDecoration(labelText: 'E-posta'),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) => value!.isEmpty ? 'E-posta gerekli.' : null,
               ),
               TextFormField(
                 controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Şifre'),
+                decoration: const InputDecoration(labelText: 'Şifre'),
                 obscureText: true,
                 validator: (value) => value!.isEmpty ? 'Şifre gerekli.' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Checkbox(
+                    value: _rememberMe,
+                    onChanged: (value) {
+                      setState(() {
+                        _rememberMe = value ?? false;
+                      });
+                    },
+                  ),
+                  const Text('Beni Hatırla'),
+                ],
+              ),
+              const SizedBox(height: 16),
               if (_errorMessage != null)
-                Text(_errorMessage!, style: TextStyle(color: Colors.red)),
-              SizedBox(height: 16),
+                Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 16),
               _isLoading
-                  ? Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
@@ -184,17 +297,21 @@ class _LoginPageState extends State<LoginPage> {
                     try {
                       print('Doğrulama e-postası tekrar gönderiliyor...');
                       await _auth.currentUser?.sendEmailVerification();
-                      setState(() {
-                        _errorMessage = 'Doğrulama e-postası tekrar gönderildi.';
-                      });
+                            if (mounted) {
+        setState(() {
+          _errorMessage = 'Doğrulama e-postası tekrar gönderildi.';
+        });
+      }
                     } catch (e) {
                       print('Doğrulama e-postası hatası: $e');
-                      setState(() {
-                        _errorMessage = 'Hata: $e';
-                      });
+                            if (mounted) {
+        setState(() {
+          _errorMessage = 'Hata: $e';
+        });
+      }
                     }
                   },
-                  child: Text('Doğrulama E-postasını Tekrar Gönder'),
+                  child: const Text('Doğrulama E-postasını Tekrar Gönder'),
                 ),
             ],
           ),

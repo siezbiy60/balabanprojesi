@@ -2,32 +2,100 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'profile_edit_page.dart';
+import 'user_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser!;
+    
+    // Debug: Kullanıcı bilgilerini kontrol et
+    print('=== PROFILE PAGE DEBUG ===');
+    print('Current User ID: ${user.uid}');
+    print('Current User Email: ${user.email}');
+    print('Current User DisplayName: ${user.displayName}');
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('Profil', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
-        backgroundColor: Theme.of(context).primaryColor,
+        title: const Text('Profil'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfileEditPage(),
+                ),
+              );
+              if (result == true) {
+                // StreamBuilder otomatik olarak yenilenecek
+              }
+            },
+            tooltip: 'Profili Düzenle',
+          ),
+        ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
         builder: (context, snapshot) {
+          print('=== STREAMBUILDER DEBUG ===');
+          print('Connection State: ${snapshot.connectionState}');
+          print('Has Data: ${snapshot.hasData}');
+          print('Has Error: ${snapshot.hasError}');
+          if (snapshot.hasError) {
+            print('Error: ${snapshot.error}');
+          }
+          if (snapshot.hasData) {
+            print('Data Exists: ${snapshot.data!.exists}');
+            if (snapshot.data!.exists) {
+              print('Raw Data: ${snapshot.data!.data()}');
+            }
+          }
+          
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Hata:  {snapshot.error}', style: TextStyle(color: Theme.of(context).colorScheme.error)));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, color: Colors.red, size: 64),
+                  const SizedBox(height: 16),
+                  Text('Hata: ${snapshot.error}'),
+                ],
+              ),
+            );
           }
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return Center(child: Text('Kullanıcı bilgileri bulunamadı.', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)));
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.person_off, color: Colors.grey, size: 64),
+                  SizedBox(height: 16),
+                  Text('Kullanıcı bilgileri bulunamadı.'),
+                  SizedBox(height: 8),
+                  Text('Firestore\'da kullanıcı dokümanı yok.'),
+                ],
+              ),
+            );
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
+          
+          // Debug bilgisi
+          print('=== PROFILE DATA DEBUG ===');
+          print('Data: $data');
+          
           final username = data['username'] as String? ?? 'Bilinmiyor';
           final name = data['name'] as String? ?? 'Bilinmiyor';
           final birthDate = data['birthDate'] as String? ?? 'Bilinmiyor';
@@ -39,202 +107,361 @@ class ProfilePage extends StatelessWidget {
           final following = (data['following'] ?? []) as List;
           final friends = (data['friends'] ?? []) as List;
 
+          print('Username: $username');
+          print('Name: $name');
+          print('City: $city');
+          print('Gender: $gender');
+          print('BirthDate: $birthDate');
+          print('Bio: $bio');
+          print('ProfileImageUrl: $profileImageUrl');
+          print('Followers count: ${followers.length}');
+          print('Following count: ${following.length}');
+          print('Friends count: ${friends.length}');
+
           return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Profil Kartı
-                  Card(
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                      child: Column(
-                        children: [
-                          Stack(
-                            alignment: Alignment.bottomRight,
-                            children: [
-                              CircleAvatar(
-                                radius: 60,
-                                backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
-                                    ? CachedNetworkImageProvider(profileImageUrl)
-                                    : null,
-                                backgroundColor: Theme.of(context).colorScheme.secondary,
-                                child: profileImageUrl == null || profileImageUrl.isEmpty
-                                    ? Icon(Icons.person, size: 60, color: Colors.white)
-                                    : null,
+            child: Column(
+              children: [
+                // Header Section with Gradient
+                Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.blue, Colors.blueAccent],
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+                        // Profile Image with Edit Icon
+                        Stack(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    spreadRadius: 2,
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              Positioned(
-                                bottom: 4,
-                                right: 4,
+                              child: CircleAvatar(
+                                radius: 70,
+                                backgroundColor: Colors.white,
+                                child: CircleAvatar(
+                                  radius: 65,
+                                  backgroundImage: profileImageUrl != null && profileImageUrl.isNotEmpty
+                                      ? CachedNetworkImageProvider(profileImageUrl)
+                                      : null,
+                                  backgroundColor: Colors.grey[300],
+                                  child: profileImageUrl == null || profileImageUrl.isEmpty
+                                      ? const Icon(Icons.person, size: 70, color: Colors.grey)
+                                      : null,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ProfileEditPage(),
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    // StreamBuilder otomatik olarak yenilenecek
+                                  }
+                                },
                                 child: Container(
-                                  decoration: BoxDecoration(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                  child: IconButton(
-                                    icon: Icon(Icons.edit, size: 22, color: Theme.of(context).colorScheme.primary),
-                                    tooltip: 'Profili Düzenle',
-                                    onPressed: () => Navigator.pushNamed(context, '/profile_edit'),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.blue,
+                                    size: 20,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            username,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
                             ),
-                            textAlign: TextAlign.center,
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Name and Username
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            bio.isNotEmpty ? bio : 'Henüz bir açıklama eklenmemiş.',
-                            style: TextStyle(fontSize: 15, color: Colors.grey[700]),
-                            textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '@$username',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w500,
                           ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _buildStat('Arkadaşlar', friends.length),
-                              _buildStat('Takipçi', followers.length),
-                              _buildStat('Takip', following.length),
-                            ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Bio
+                        if (bio.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Text(
+                              bio,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ],
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Stats Section
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
+                    ],
                   ),
-                  SizedBox(height: 24),
-                  // Bilgiler Kartı
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      child: Column(
-                        children: [
-                          _buildInfoRow(context, 'İsim Soyisim', name),
-                          _buildInfoRow(context, 'Doğum Tarihi', birthDate),
-                          _buildInfoRow(context, 'Şehir', city),
-                          _buildInfoRow(context, 'Cinsiyet', gender),
-                        ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStat('Arkadaşlar', friends.length, Icons.people),
+                      _buildStat('Takipçi', followers.length, Icons.favorite),
+                      _buildStat('Takip', following.length, Icons.person_add),
+                    ],
+                  ),
+                ),
+
+                // Info Section
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
+                    ],
                   ),
-                  SizedBox(height: 24),
-                  // Arkadaşlar Listesi
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Arkadaşlar (${friends.length})',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Kişisel Bilgiler',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildInfoRow('İsim Soyisim', name, Icons.person),
+                      _buildInfoRow('Kullanıcı Adı', '@$username', Icons.alternate_email),
+                      _buildInfoRow('Doğum Tarihi', birthDate, Icons.cake),
+                      _buildInfoRow('Şehir', city, Icons.location_city),
+                      _buildInfoRow('Cinsiyet', gender, Icons.person_outline),
+                    ],
                   ),
-                  SizedBox(height: 8),
-                  if (friends.isEmpty)
-                    Center(
-                      child: Text('Henüz arkadaş yok', style: TextStyle(color: Colors.grey)),
-                    )
-                  else
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: friends.length,
-                      separatorBuilder: (context, i) => SizedBox(height: 12),
-                      itemBuilder: (context, i) {
-                        final friendId = friends[i];
-                        return FutureBuilder<DocumentSnapshot>(
-                          future: FirebaseFirestore.instance.collection('users').doc(friendId).get(),
-                          builder: (context, friendSnap) {
-                            if (!friendSnap.hasData || !friendSnap.data!.exists) {
-                              return Card(
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                child: ListTile(
-                                  leading: CircleAvatar(radius: 28, child: Icon(Icons.person)),
-                                  title: Text('?', style: TextStyle(fontSize: 16)),
-                                  subtitle: Text('Kullanıcı bulunamadı'),
-                                ),
-                              );
-                            }
-                            final friendData = friendSnap.data!.data() as Map<String, dynamic>;
-                            final friendName = friendData['username'] ?? 'Bilinmiyor';
-                            final friendPhoto = friendData['profileImageUrl'] ?? '';
-                            return Card(
-                              elevation: 4,
-                              margin: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              child: ListTile(
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                leading: CircleAvatar(
-                                  radius: 28,
-                                  backgroundImage: friendPhoto.isNotEmpty ? CachedNetworkImageProvider(friendPhoto) : null,
-                                  child: friendPhoto.isEmpty ? Icon(Icons.person, size: 28) : null,
-                                ),
-                                title: Text(friendName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                trailing: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    backgroundColor: Theme.of(context).colorScheme.primary,
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => ProfilePage(), // Kendi profilin için UserProfilePage yerine ProfilePage açılır
-                                      ),
+                ),
+
+                // Friends Section
+                if (friends.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.people, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Arkadaşlar (${friends.length})',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 80,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: friends.length,
+                            itemBuilder: (context, index) {
+                              final friendId = friends[index];
+                              return FutureBuilder<DocumentSnapshot>(
+                                future: FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(friendId)
+                                    .get(),
+                                builder: (context, friendSnap) {
+                                  if (!friendSnap.hasData || !friendSnap.data!.exists) {
+                                    return _buildFriendItem(
+                                      '?',
+                                      null,
+                                      () {},
                                     );
-                                  },
-                                  child: Text('Profili Gör'),
-                                ),
+                                  }
+                                  final friendData = friendSnap.data!.data() as Map<String, dynamic>;
+                                  final friendName = friendData['name'] as String? ?? 'Bilinmiyor';
+                                  final friendPhoto = friendData['profileImageUrl'] as String?;
+                                  return _buildFriendItem(
+                                    friendName,
+                                    friendPhoto,
+                                    () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => UserProfilePage(userId: friendId),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Action Buttons
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfileEditPage(),
+                              ),
+                            );
+                            if (result == true) {
+                              // StreamBuilder otomatik olarak yenilenecek
+                            }
+                          },
+                          icon: const Icon(Icons.edit),
+                          label: const Text('Profili Düzenle'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Çıkış Yap'),
+                                content: const Text('Çıkış yapmak istediğinizden emin misiniz?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('İptal'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      FirebaseAuth.instance.signOut();
+                                      Navigator.pushReplacementNamed(context, '/login');
+                                    },
+                                    child: const Text('Çıkış Yap'),
+                                  ),
+                                ],
                               ),
                             );
                           },
-                        );
-                      },
-                    ),
-                  SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          FirebaseAuth.instance.signOut();
-                          Navigator.pushReplacementNamed(context, '/login');
-                        },
-                        icon: Icon(Icons.logout),
-                        label: Text('Çıkış Yap'),
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          textStyle: TextStyle(fontSize: 16),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/profile_edit');
-                        },
-                        icon: Icon(Icons.edit),
-                        label: Text('Profili Düzenle'),
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          textStyle: TextStyle(fontSize: 16),
+                          icon: const Icon(Icons.logout),
+                          label: const Text('Çıkış Yap'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 24),
-                ],
-              ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
           );
         },
@@ -242,41 +469,96 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, String label, String value) {
+  Widget _buildStat(String label, int value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.blue, size: 24),
+        const SizedBox(height: 8),
+        Text(
+          '$value',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            '$label:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-              textAlign: TextAlign.end,
+          Icon(icon, color: Colors.blue, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-  Widget _buildStat(String label, int value) {
-    return Column(
-      children: [
-        Text('$value', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-      ],
+
+  Widget _buildFriendItem(String name, String? photoUrl, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 12),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 25,
+              backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                  ? CachedNetworkImageProvider(photoUrl)
+                  : null,
+              backgroundColor: Colors.grey[300],
+              child: photoUrl == null || photoUrl.isEmpty
+                  ? const Icon(Icons.person, size: 25, color: Colors.grey)
+                  : null,
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: 50,
+              child: Text(
+                name,
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-}
+} 
