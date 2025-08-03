@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'chat_page.dart';
+import 'notification_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String userId;
@@ -16,22 +17,28 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _sendFriendRequest(BuildContext context, String otherUserId) async {
     final user = FirebaseAuth.instance.currentUser!;
     final myId = user.uid;
-    // Sadece alıcının friendRequests listesine ekle, merge ile alan yoksa oluştur
-    await FirebaseFirestore.instance.collection('users').doc(otherUserId).set({
-      'friendRequests': FieldValue.arrayUnion([myId])
-    }, SetOptions(merge: true));
-    // Bildirim gönder
-    final receiverDoc = await FirebaseFirestore.instance.collection('users').doc(otherUserId).get();
-    final fcmToken = receiverDoc.data()?['fcmToken'];
-    if (fcmToken != null && fcmToken.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'token': fcmToken,
-        'title': 'Arkadaşlık İsteği',
-        'body': '${user.displayName ?? user.email ?? "Bir kullanıcı"} sana arkadaşlık isteği gönderdi.',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+    
+    try {
+      // Sadece alıcının friendRequests listesine ekle, merge ile alan yoksa oluştur
+      await FirebaseFirestore.instance.collection('users').doc(otherUserId).set({
+        'friendRequests': FieldValue.arrayUnion([myId])
+      }, SetOptions(merge: true));
+      
+      // Gönderen kişinin adını al
+      final senderDoc = await FirebaseFirestore.instance.collection('users').doc(myId).get();
+      final senderName = senderDoc.exists ? (senderDoc.data() as Map<String, dynamic>)['name'] ?? 'Bilinmeyen' : 'Bilinmeyen';
+      
+      // Yeni bildirim servisini kullan
+      await NotificationService.sendFriendRequestNotification(
+        receiverId: otherUserId,
+        senderName: senderName,
+        senderId: myId,
+      );
+      
+      setState(() {});
+    } catch (e) {
+      print('❌ Arkadaşlık isteği gönderilemedi: $e');
     }
-    setState(() {});
   }
 
   Future<void> _removeFriend(BuildContext context, String otherUserId) async {
@@ -77,17 +84,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
       await FirebaseFirestore.instance.collection('users').doc(otherUserId).set({
         'followers': FieldValue.arrayUnion([myId])
       }, SetOptions(merge: true));
-      // Bildirim gönder
-      final receiverDoc = await FirebaseFirestore.instance.collection('users').doc(otherUserId).get();
-      final fcmToken = receiverDoc.data()?['fcmToken'];
-      if (fcmToken != null && fcmToken.isNotEmpty) {
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'token': fcmToken,
-          'title': 'Yeni Takipçi',
-          'body': '${user.displayName ?? user.email ?? "Bir kullanıcı"} seni takip etmeye başladı.',
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
+      
+      // Gönderen kişinin adını al
+      final senderDoc = await FirebaseFirestore.instance.collection('users').doc(myId).get();
+      final senderName = senderDoc.exists ? (senderDoc.data() as Map<String, dynamic>)['name'] ?? 'Bilinmeyen' : 'Bilinmeyen';
+      
+      // Yeni bildirim servisini kullan
+      await NotificationService.sendFollowNotification(
+        followedId: otherUserId,
+        followerName: senderName,
+        followerId: myId,
+      );
+      
       setState(() {});
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

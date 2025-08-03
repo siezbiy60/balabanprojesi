@@ -203,49 +203,21 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _sendMessageNotification(String message) async {
     try {
-      print('📱 Mesaj bildirimi gönderiliyor...');
-      print('📱 Alıcı ID: ${widget.receiverId}');
-      print('📱 Alıcı adı: ${widget.receiverName}');
-      print('📱 Mesaj: $message');
+      // Gönderen kişinin adını al
+      final senderDoc = await _firestore.collection('users').doc(_auth.currentUser!.uid).get();
+      final senderName = senderDoc.exists ? (senderDoc.data() as Map<String, dynamic>)['name'] ?? 'Bilinmeyen' : 'Bilinmeyen';
       
-      // Karşı tarafın FCM token'ını al
-      final receiverDoc = await _firestore.collection('users').doc(widget.receiverId).get();
-      if (receiverDoc.exists) {
-        final receiverData = receiverDoc.data() as Map<String, dynamic>;
-        final fcmToken = receiverData['fcmToken'];
-        
-        print('📱 Alıcı verileri: $receiverData');
-        print('📱 FCM Token: ${fcmToken != null ? fcmToken.substring(0, 20) + '...' : 'null'}');
-        
-        if (fcmToken != null && fcmToken.isNotEmpty) {
-          // Gönderen kişinin adını al
-          final senderDoc = await _firestore.collection('users').doc(_auth.currentUser!.uid).get();
-          final senderName = senderDoc.exists ? (senderDoc.data() as Map<String, dynamic>)['name'] ?? 'Bilinmeyen' : 'Bilinmeyen';
-          
-          print('📱 Gönderen adı: $senderName');
-          
-          // Bildirim gönder
-          await NotificationService.sendPushNotification(
-            token: fcmToken,
-            title: senderName, // Gönderen kişinin adı
-            body: message.length > 50 ? '${message.substring(0, 50)}...' : message,
-            data: {
-              'type': 'message',
-              'senderId': _auth.currentUser!.uid,
-              'chatId': _chatId,
-              'messageId': DateTime.now().millisecondsSinceEpoch.toString(),
-            },
-          );
-          print('✅ Mesaj bildirimi gönderildi: $senderName -> ${widget.receiverName}');
-        } else {
-          print('❌ Alıcının FCM token\'ı bulunamadı');
-        }
-      } else {
-        print('❌ Alıcı kullanıcısı bulunamadı: ${widget.receiverId}');
-      }
+      // Yeni bildirim servisini kullan
+      await NotificationService.sendMessageNotification(
+        receiverId: widget.receiverId,
+        senderName: senderName,
+        message: message,
+        senderId: _auth.currentUser!.uid,
+      );
+      
+      print('✅ Mesaj bildirimi gönderildi: $senderName -> ${widget.receiverName}');
     } catch (e) {
       print('❌ Mesaj bildirimi gönderilemedi: $e');
-      print('❌ Hata detayı: ${e.toString()}');
     }
   }
 

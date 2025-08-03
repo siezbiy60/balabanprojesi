@@ -178,7 +178,7 @@ class _MatchingWaitingPageState extends State<MatchingWaitingPage> with SingleTi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple.shade50,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -187,26 +187,26 @@ class _MatchingWaitingPageState extends State<MatchingWaitingPage> with SingleTi
               scale: _animation,
               child: CircleAvatar(
                 radius: 60,
-                backgroundColor: Colors.purple.shade200,
-                child: Icon(Icons.search, size: 60, color: Colors.white),
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                child: Icon(Icons.search, size: 60, color: Theme.of(context).colorScheme.primary),
               ),
             ),
             const SizedBox(height: 32),
             Text(
               'Eşleşme aranıyor...\nLütfen bekleyin',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(height: 32),
-            CircularProgressIndicator(color: Colors.purple, strokeWidth: 4),
+            CircularProgressIndicator(color: Theme.of(context).colorScheme.primary, strokeWidth: 4),
             const SizedBox(height: 48),
             ElevatedButton.icon(
               onPressed: _cancelMatching,
               icon: Icon(Icons.cancel),
               label: Text('İptal Et'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
                 padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

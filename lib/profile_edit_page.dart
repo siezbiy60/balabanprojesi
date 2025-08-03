@@ -76,9 +76,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 80,
+        maxWidth: 400, // Profil resmi için daha küçük
+        maxHeight: 400, // Profil resmi için daha küçük
+        imageQuality: 70, // Daha düşük kalite
       );
 
       if (pickedFile != null) {

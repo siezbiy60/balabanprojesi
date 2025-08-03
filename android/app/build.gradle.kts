@@ -16,8 +16,10 @@ android {
         versionCode = 1
         versionName = "1.0"
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
+        // Bellek optimizasyonu
+        manifestPlaceholders["usesCleartextTraffic"] = "false"
     }
 
     compileOptions {
@@ -39,13 +41,19 @@ android {
                 "proguard-rules.pro"
             )
         }
-        debug {
-            isMinifyEnabled = false
-            isShrinkResources = false
-            ndk {
-                debugSymbolLevel = "NONE"
-            }
+            debug {
+        isMinifyEnabled = false
+        isShrinkResources = false
+        ndk {
+            debugSymbolLevel = "NONE"
         }
+        // Bellek optimizasyonu
+        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        // Emülatör için ek optimizasyonlar
+        manifestPlaceholders["largeHeap"] = "true"
+        // Debug için ek optimizasyonlar
+        manifestPlaceholders["debuggable"] = "true"
+    }
     }
 
     packagingOptions {

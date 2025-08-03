@@ -94,12 +94,12 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.people_rounded,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimary,
                 size: 24,
               ),
             ),
@@ -108,7 +108,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
               child: Text(
                 'Çevrimiçi Kullanıcılar',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -117,7 +117,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
             ),
           ],
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -128,30 +128,30 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
           Container(
             margin: EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: Icon(Icons.refresh, color: Colors.white, size: 24),
+              icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onPrimary, size: 24),
               onPressed: _loadOnlineUsers,
             ),
           ),
         ],
       ),
-      backgroundColor: Colors.deepPurple.shade50,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: _isLoading
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                   ),
                   SizedBox(height: 16),
                   Text(
                     'Çevrimiçi kullanıcılar yükleniyor...',
                     style: TextStyle(
-                      color: Colors.deepPurple,
+                      color: Theme.of(context).colorScheme.primary,
                       fontSize: 16,
                     ),
                   ),
@@ -166,11 +166,11 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                       Container(
                         padding: EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.deepPurple.withOpacity(0.1),
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                               spreadRadius: 0,
                               blurRadius: 12,
                               offset: Offset(0, 4),
@@ -180,7 +180,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                         child: Icon(
                           Icons.people_outline,
                           size: 64,
-                          color: Colors.deepPurple.shade300,
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
                         ),
                       ),
                       SizedBox(height: 24),
@@ -189,7 +189,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
-                          color: Colors.deepPurple.shade700,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                       SizedBox(height: 8),
@@ -198,7 +198,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.deepPurple.shade500,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
                       SizedBox(height: 24),
@@ -206,8 +206,8 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                         icon: Icon(Icons.refresh),
                         label: Text('Yenile'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -220,7 +220,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                 )
               : RefreshIndicator(
                   onRefresh: _loadOnlineUsers,
-                  color: Colors.deepPurple,
+                  color: Theme.of(context).colorScheme.primary,
                   child: ListView.builder(
                     padding: EdgeInsets.all(16),
                     itemCount: _onlineUsers.length,
@@ -236,8 +236,8 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Colors.white,
-                              Colors.grey.shade50,
+                              Theme.of(context).colorScheme.surface,
+                              Theme.of(context).colorScheme.surface.withOpacity(0.8),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -245,7 +245,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.deepPurple.withOpacity(0.1),
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                               spreadRadius: 0,
                               blurRadius: 12,
                               offset: Offset(0, 4),
@@ -261,7 +261,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.grey.withOpacity(0.2),
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
                                       spreadRadius: 0,
                                       blurRadius: 8,
                                       offset: Offset(0, 2),
@@ -273,14 +273,14 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                                   backgroundImage: userImage != null
                                       ? CachedNetworkImageProvider(userImage)
                                       : null,
-                                  backgroundColor: userImage == null ? Colors.deepPurple.shade100 : null,
+                                  backgroundColor: userImage == null ? Theme.of(context).colorScheme.primary.withOpacity(0.2) : null,
                                   child: userImage == null
                                       ? Text(
                                           userName.isNotEmpty ? userName[0].toUpperCase() : '?',
                                           style: TextStyle(
                                             fontSize: 20,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.deepPurple.shade700,
+                                            color: Theme.of(context).colorScheme.primary,
                                           ),
                                         )
                                       : null,
@@ -297,7 +297,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                                       color: Colors.green,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.white,
+                                        color: Theme.of(context).colorScheme.surface,
                                         width: 2,
                                       ),
                                     ),
@@ -310,14 +310,14 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              color: Colors.deepPurple.shade800,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           subtitle: Text(
                             isOnline ? 'Çevrimiçi' : 'Son görülme: ${_formatLastSeen(lastActive)}',
                             style: TextStyle(
                               fontSize: 14,
-                              color: isOnline ? Colors.green.shade600 : Colors.grey.shade600,
+                              color: isOnline ? Colors.green.shade600 : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                             ),
                           ),
                           trailing: Row(
@@ -325,13 +325,13 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                             children: [
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.deepPurple.withOpacity(0.1),
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: IconButton(
                                   icon: Icon(
                                     Icons.chat_bubble_outline,
-                                    color: Colors.deepPurple,
+                                    color: Theme.of(context).colorScheme.primary,
                                     size: 24,
                                   ),
                                   onPressed: () => _startChat(user['id'], userName),
@@ -341,13 +341,13 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                               SizedBox(width: 8),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.deepPurple.withOpacity(0.1),
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: IconButton(
                                   icon: Icon(
                                     Icons.person_outline,
-                                    color: Colors.deepPurple,
+                                    color: Theme.of(context).colorScheme.primary,
                                     size: 24,
                                   ),
                                   onPressed: () => _viewProfile(user['id']),

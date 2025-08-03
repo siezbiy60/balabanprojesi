@@ -6,10 +6,7 @@ import 'messages_page.dart';
 import 'user_profile_page.dart';
 import 'profile_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:async';
-import 'notification_service.dart';
 import 'webrtc_call_page.dart';
 import 'webrtc_call_service.dart';
 import 'matching_service.dart';
@@ -17,6 +14,8 @@ import 'matching_waiting_page.dart';
 import 'online_users_page.dart';
 import 'settings_page.dart';
 import 'theme_service.dart';
+import 'social_page.dart';
+import 'notifications_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -45,7 +44,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _updateLastActive();
-    _activeTimer = Timer.periodic(Duration(minutes: 1), (_) => _updateLastActive());
+    _activeTimer = Timer.periodic(const Duration(minutes: 1), (_) => _updateLastActive());
     _listenForIncomingCalls();
     _listenForUnreadMessages();
     _loadMostActiveUsers();
@@ -68,8 +67,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
-
   // En çok aktif kullanıcıları yükle
   Future<void> _loadMostActiveUsers() async {
     try {
@@ -78,9 +75,6 @@ class _HomePageState extends State<HomePage> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      // Son 7 gün içinde aktif olan kullanıcıları al
-      final sevenDaysAgo = DateTime.now().subtract(Duration(days: 7));
-      
       final querySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .orderBy('lastActive', descending: true)
@@ -127,12 +121,12 @@ class _HomePageState extends State<HomePage> {
           final callerId = data['callerId'] as String;
           final callerName = data['callerName'] as String? ?? 'Bilinmeyen';
         
-        setState(() {
+          setState(() {
             _incomingCallId = callId;
             _incomingCallerId = callerId;
-          _incomingCallerName = callerName;
-          _isIncomingCallDialogVisible = true;
-        });
+            _incomingCallerName = callerName;
+            _isIncomingCallDialogVisible = true;
+          });
         
           _showIncomingCallDialog(callId, callerName);
         }
@@ -171,15 +165,15 @@ class _HomePageState extends State<HomePage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text('Gelen Arama'),
+        title: const Text('Gelen Arama'),
         content: Text('$callerName sizi arıyor'),
         actions: [
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-                setState(() {
-                  _isIncomingCallDialogVisible = false;
-                });
+              setState(() {
+                _isIncomingCallDialogVisible = false;
+              });
               
               Navigator.push(
                 context,
@@ -198,9 +192,9 @@ class _HomePageState extends State<HomePage> {
             onPressed: () async {
               // Çağrıyı reddetmek için dokümanı sil
               await FirebaseFirestore.instance.collection('calls').doc(callId).delete();
-                setState(() {
-                  _isIncomingCallDialogVisible = false;
-                });
+              setState(() {
+                _isIncomingCallDialogVisible = false;
+              });
               Navigator.of(context).pop();
             },
             child: const Text('Reddet'),
@@ -230,11 +224,6 @@ class _HomePageState extends State<HomePage> {
         setState(() { _isMatching = false; });
       }
     });
-  }
-
-  void _leaveQueueAndRematch() async {
-    await MatchingService.leaveQueue();
-    _startMatching();
   }
 
   void _goToCall(String callId, bool isCaller) {
@@ -290,7 +279,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ValueListenableBuilder<bool>(
       valueListenable: ThemeService.themeNotifier,
       builder: (context, isDarkMode, child) {
@@ -298,352 +286,436 @@ class _HomePageState extends State<HomePage> {
           appBar: AppBar(
             elevation: 0,
             actions: [
-          IconButton(
-            icon: Icon(Icons.settings, color: Theme.of(context).colorScheme.onPrimary),
-            tooltip: 'Ayarlar',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SettingsPage(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimary),
-            tooltip: 'Profil',
-            onPressed: () {
-                      final myId = FirebaseAuth.instance.currentUser?.uid;
-                      if (myId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                    builder: (context) => ProfilePage(),
-                          ),
-                        );
-                      }
-                    },
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(Icons.message, color: Theme.of(context).colorScheme.onPrimary),
-                tooltip: 'Mesajlar',
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => MessagesPage()));
-                },
-              ),
-              if (_unreadMessageCount > 0)
+              // Bildirim butonu
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(FirebaseAuth.instance.currentUser?.uid)
+                    .collection('notifications')
+                    .where('isRead', isEqualTo: false)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  final unreadCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                  
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.notifications, color: Theme.of(context).colorScheme.onPrimary),
+                        tooltip: 'Bildirimler',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationsPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      if (unreadCount > 0)
                         Positioned(
-                  right: 8,
-                  top: 8,
+                          right: 8,
+                          top: 8,
                           child: Container(
-                    padding: EdgeInsets.all(2),
-                    decoration: BoxDecoration(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.error,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
                             ),
                             child: Text(
-                      _unreadMessageCount.toString(),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
                     ],
-          ),
-        ],
-      ),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 48),
-          // Bağlan butonu
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: SizedBox(
-              width: double.infinity,
-              height: 64,
-              child: ElevatedButton.icon(
-                icon: Icon(Icons.shuffle, size: 32),
-                label: Text('Bağlan', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  elevation: 4,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () {
-                  print('🔘 Bağlan butonuna basıldı!');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('🔘 Bağlan butonuna basıldı!')),
-                  );
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => MatchingWaitingPage()),
                   );
                 },
               ),
-            ),
-          ),
-
-          const SizedBox(height: 32),
-          // Çevrimiçi kullanıcılar butonu
-              Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                icon: Icon(Icons.people_rounded, size: 24),
-                label: Text('Çevrimiçi Kullanıcılar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 4,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                ),
+              IconButton(
+                icon: Icon(Icons.settings, color: Theme.of(context).colorScheme.onPrimary),
+                tooltip: 'Ayarlar',
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => OnlineUsersPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsPage(),
+                    ),
                   );
                 },
               ),
-            ),
+              IconButton(
+                icon: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimary),
+                tooltip: 'Profil',
+                onPressed: () {
+                  final myId = FirebaseAuth.instance.currentUser?.uid;
+                  if (myId != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfilePage(),
+                      ),
+                    );
+                  }
+                },
+              ),
+              Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.message, color: Theme.of(context).colorScheme.onPrimary),
+                    tooltip: 'Mesajlar',
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const MessagesPage()));
+                    },
+                  ),
+                  if (_unreadMessageCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          _unreadMessageCount.toString(),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 32),
-          // En çok aktif kullanıcılar başlığı
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.trending_up, color: Theme.of(context).colorScheme.primary, size: 28),
-                const SizedBox(width: 8),
-                Text('En Aktif Kullanıcılar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                const SizedBox(height: 48),
+                // Bağlan butonu
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 64,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.shuffle, size: 32),
+                      label: const Text('Bağlan', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.secondary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        elevation: 4,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () {
+                        print('🔘 Bağlan butonuna basıldı!');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('🔘 Bağlan butonuna basıldı!')),
+                        );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MatchingWaitingPage()),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+                // Sosyal butonu
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.forum, size: 24),
+                      label: const Text('Sosyal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.tertiary,
+                        foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SocialPage()),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Çevrimiçi kullanıcılar butonu
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.people_rounded, size: 24),
+                      label: const Text('Çevrimiçi Kullanıcılar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const OnlineUsersPage()),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // En çok aktif kullanıcılar başlığı
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    children: [
+                      Icon(Icons.trending_up, color: Theme.of(context).colorScheme.primary, size: 28),
+                      const SizedBox(width: 8),
+                      Text('En Aktif Kullanıcılar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // En çok aktif kullanıcılar listesi
+                Container(
+                  height: 300,
+                  child: _isLoadingActiveUsers
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Kullanıcılar yükleniyor...',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _mostActiveUsers.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                          spreadRadius: 0,
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.people_outline,
+                                      size: 64,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Henüz aktif kullanıcı yok',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Diğer kullanıcılar aktif olduğunda\nburada görünecekler',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _loadMostActiveUsers,
+                              color: Theme.of(context).colorScheme.primary,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: _mostActiveUsers.length,
+                                itemBuilder: (context, index) {
+                                  final user = _mostActiveUsers[index];
+                                  final userName = user['name'] as String? ?? 'Bilinmeyen Kullanıcı';
+                                  final userImage = user['profileImageUrl'] as String?;
+                                  final lastActive = user['lastActive'] as Timestamp?;
+                                  final city = user['city'] as String? ?? 'Bilinmiyor';
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Theme.of(context).colorScheme.onPrimary,
+                                          Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                          spreadRadius: 0,
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.all(16),
+                                      leading: Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+                                              spreadRadius: 0,
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: CircleAvatar(
+                                          radius: 28,
+                                          backgroundImage: userImage != null
+                                              ? CachedNetworkImageProvider(userImage)
+                                              : null,
+                                          backgroundColor: userImage == null ? Theme.of(context).colorScheme.primary.withOpacity(0.2) : null,
+                                          child: userImage == null
+                                              ? Text(
+                                                  userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Theme.of(context).colorScheme.primary,
+                                                  ),
+                                                )
+                                              : null,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        userName,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        ),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            city,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Son aktif: ${_formatLastActive(lastActive)}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: IconButton(
+                                              icon: Icon(
+                                                Icons.chat_bubble_outline,
+                                                color: Theme.of(context).colorScheme.primary,
+                                                size: 24,
+                                              ),
+                                              onPressed: () => _startChat(user['id'], userName),
+                                              tooltip: 'Mesaj Gönder',
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: IconButton(
+                                              icon: Icon(
+                                                Icons.person_outline,
+                                                color: Theme.of(context).colorScheme.primary,
+                                                size: 24,
+                                              ),
+                                              onPressed: () => _viewProfile(user['id']),
+                                              tooltip: 'Profili Görüntüle',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                ),
+                const SizedBox(height: 32),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          // En çok aktif kullanıcılar listesi
-              Expanded(
-            child: _isLoadingActiveUsers
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Kullanıcılar yükleniyor...',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : _mostActiveUsers.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                    spreadRadius: 0,
-                                    blurRadius: 12,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.people_outline,
-                                size: 64,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            SizedBox(height: 24),
-                            Text(
-                              'Henüz aktif kullanıcı yok',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Diğer kullanıcılar aktif olduğunda\nburada görünecekler',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadMostActiveUsers,
-                        color: Theme.of(context).colorScheme.primary,
-                        child: ListView.builder(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: _mostActiveUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = _mostActiveUsers[index];
-                            final userName = user['name'] as String? ?? 'Bilinmeyen Kullanıcı';
-                            final userImage = user['profileImageUrl'] as String?;
-                            final lastActive = user['lastActive'] as Timestamp?;
-                            final city = user['city'] as String? ?? 'Bilinmiyor';
-
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Theme.of(context).colorScheme.onPrimary,
-                                    Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                    spreadRadius: 0,
-                                    blurRadius: 12,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: ListTile(
-                                contentPadding: EdgeInsets.all(16),
-                                leading: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-                                        spreadRadius: 0,
-                                        blurRadius: 8,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 28,
-                                    backgroundImage: userImage != null
-                                        ? CachedNetworkImageProvider(userImage)
-                                        : null,
-                                    backgroundColor: userImage == null ? Theme.of(context).colorScheme.primary.withOpacity(0.2) : null,
-                                    child: userImage == null
-                                        ? Text(
-                                            userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Theme.of(context).colorScheme.primary,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                                title: Text(
-                                  userName,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      city,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'Son aktif: ${_formatLastActive(lastActive)}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                ),
-              ),
-            ],
-          ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-            children: [
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: IconButton(
-                                        icon: Icon(
-                                          Icons.chat_bubble_outline,
-                                          color: Theme.of(context).colorScheme.primary,
-                                          size: 24,
-                                        ),
-                                        onPressed: () => _startChat(user['id'], userName),
-                                        tooltip: 'Mesaj Gönder',
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: IconButton(
-                                        icon: Icon(
-                                          Icons.person_outline,
-                                          color: Theme.of(context).colorScheme.primary,
-                                          size: 24,
-                                        ),
-                                        onPressed: () => _viewProfile(user['id']),
-                                        tooltip: 'Profili Görüntüle',
-                          ),
-                        ),
-                    ],
-                                ),
-                              ),
-                  );
-                },
-              ),
-                      ),
-              ),
-            ],
           ),
         );
       },
     );
   }
-}
+} 

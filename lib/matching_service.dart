@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'notification_service.dart';
 
 class MatchingService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -92,6 +93,34 @@ class MatchingService {
           'lastActivity': FieldValue.serverTimestamp(),
         });
         print('✅ Bu kullanıcı güncellendi: ${user.uid}');
+
+        // Eşleşme bildirimleri gönder
+        try {
+          // Kullanıcı isimlerini al
+          final userDoc = await _firestore.collection('users').doc(user.uid).get();
+          final otherUserDoc = await _firestore.collection('users').doc(otherUid).get();
+          
+          final userName = userDoc.exists ? (userDoc.data() as Map<String, dynamic>)['name'] ?? 'Bilinmeyen' : 'Bilinmeyen';
+          final otherUserName = otherUserDoc.exists ? (otherUserDoc.data() as Map<String, dynamic>)['name'] ?? 'Bilinmeyen' : 'Bilinmeyen';
+          
+          // Diğer kullanıcıya bildirim gönder
+          await NotificationService.sendMatchNotification(
+            userId: otherUid,
+            matchedUserName: userName,
+            matchedUserId: user.uid,
+          );
+          
+          // Bu kullanıcıya bildirim gönder
+          await NotificationService.sendMatchNotification(
+            userId: user.uid,
+            matchedUserName: otherUserName,
+            matchedUserId: otherUid,
+          );
+          
+          print('✅ Eşleşme bildirimleri gönderildi');
+        } catch (e) {
+          print('❌ Eşleşme bildirimi gönderilemedi: $e');
+        }
 
         return callId;
       } else {
