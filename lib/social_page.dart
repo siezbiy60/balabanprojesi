@@ -5,6 +5,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'user_profile_page.dart';
 import 'create_post_page.dart';
+import 'login_page.dart';
+import 'comments_page.dart';
+import 'services/comment_service.dart';
+import 'services/notification_service.dart';
+import 'search_page.dart';
 
 class SocialPage extends StatefulWidget {
   const SocialPage({super.key});
@@ -31,6 +36,12 @@ class _SocialPageState extends State<SocialPage> {
   }
 
   int _getCommentCount(Map<String, dynamic> post) {
+    // Önce commentCount alanını kontrol et
+    if (post['commentCount'] != null) {
+      return post['commentCount'] as int;
+    }
+    
+    // Eğer commentCount yoksa, eski yöntemi kullan
     final comments = List<dynamic>.from(post['comments'] ?? []);
     return comments.length;
   }
@@ -74,6 +85,15 @@ class _SocialPageState extends State<SocialPage> {
       }
 
       await postRef.update({'likes': likes});
+
+      // Beğeni bildirimi gönder
+      if (!_isLiked(post)) {
+        await NotificationService.createLikeNotification(
+          postUserId: post['userId'],
+          postId: post['id'],
+          postContent: post['content'] ?? '',
+        );
+      }
 
       // Post verilerini güncelle
       post['likes'] = likes;
@@ -340,24 +360,38 @@ class _SocialPageState extends State<SocialPage> {
                   ),
                 ),
                 const SizedBox(width: 24),
-                // Yorum Butonu
-                Row(
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${_getCommentCount(post)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
+                                 // Yorum Butonu
+                 GestureDetector(
+                   onTap: () {
+                     Navigator.push(
+                       context,
+                       MaterialPageRoute(
+                         builder: (context) => CommentsPage(
+                           postId: post['id'],
+                           postContent: content,
+                           postUserName: userName,
+                         ),
+                       ),
+                     );
+                   },
+                   child: Row(
+                     children: [
+                       Icon(
+                         Icons.chat_bubble_outline,
+                         color: theme.colorScheme.onSurface.withOpacity(0.6),
+                         size: 24,
+                       ),
+                       const SizedBox(width: 8),
+                       Text(
+                         '${_getCommentCount(post)}',
+                         style: TextStyle(
+                           fontSize: 14,
+                           color: theme.colorScheme.onSurface.withOpacity(0.7),
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
                 const SizedBox(width: 24),
                 // Paylaş Butonu
                 Icon(
@@ -401,7 +435,17 @@ class _SocialPageState extends State<SocialPage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         elevation: 0,
-        actions: [
+        actions: _auth.currentUser != null ? [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchPage()),
+              );
+            },
+            icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onPrimary),
+            tooltip: 'Ara',
+          ),
           IconButton(
             onPressed: () async {
               final result = await Navigator.push(
@@ -415,27 +459,109 @@ class _SocialPageState extends State<SocialPage> {
             icon: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
             tooltip: 'Yeni Gönderi',
           ),
-        ],
+          // Geçici buton - yorum sayılarını güncellemek için
+          IconButton(
+            onPressed: () async {
+              try {
+                await CommentService.updateAllPostCommentCounts();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Yorum sayıları güncellendi')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hata: $e')),
+                );
+              }
+            },
+            icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onPrimary),
+            tooltip: 'Yorum Sayılarını Güncelle',
+          ),
+        ] : null,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('posts')
-            .where('isDeleted', isEqualTo: false)
-            .orderBy('timestamp', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
+      body: _auth.currentUser == null
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error, color: Theme.of(context).colorScheme.error, size: 48),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.login,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Gönderiler yüklenirken hata oluştu'),
+                  Text(
+                    'Giriş Yapın',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Gönderileri görmek için giriş yapmanız gerekiyor',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                                     ElevatedButton.icon(
+                     onPressed: () {
+                       Navigator.pushReplacement(
+                         context,
+                         MaterialPageRoute(builder: (context) => const LoginPage()),
+                       );
+                     },
+                    icon: const Icon(Icons.login),
+                    label: const Text('Giriş Yap'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
                 ],
               ),
-            );
-          }
+            )
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('posts')
+                  .where('isDeleted', isEqualTo: false)
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  print('Social page error: ${snapshot.error}');
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error, color: Theme.of(context).colorScheme.error, size: 48),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Gönderiler yüklenirken hata oluştu',
+                          style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Lütfen internet bağlantınızı kontrol edin',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(

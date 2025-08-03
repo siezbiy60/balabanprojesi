@@ -89,9 +89,10 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       // Bu sohbetteki, karşı tarafın gönderdiği okunmamış mesajları bul
+      // Hem chatId hem de receiverId ile kontrol et
       final unreadMessages = await _firestore
           .collection('messages')
-          .where('chatId', isEqualTo: _chatId)
+          .where('receiverId', isEqualTo: currentUserId)
           .where('senderId', isEqualTo: widget.receiverId)
           .where('isRead', isEqualTo: false)
           .get();
@@ -102,8 +103,10 @@ class _ChatPageState extends State<ChatPage> {
         batch.update(doc.reference, {'isRead': true});
       }
       await batch.commit();
+      
+      print('✅ ${unreadMessages.docs.length} mesaj okundu olarak işaretlendi');
     } catch (e) {
-      print('Mesajları okundu işaretleme hatası: $e');
+      print('❌ Mesajları okundu işaretleme hatası: $e');
     }
   }
 
@@ -277,6 +280,7 @@ class _ChatPageState extends State<ChatPage> {
                           lastActive.toDate().isAfter(fiveMinutesAgo);
 
                       return Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
                             width: 8,
@@ -289,15 +293,18 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                           ),
                           SizedBox(width: 6),
-                          Text(
-                            isReallyOnline 
-                              ? 'Çevrimiçi'
-                              : lastActive != null 
-                                ? 'Son görülme: ${_formatLastSeen(lastActive)}'
-                                : 'Çevrimdışı',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                          Flexible(
+                            child: Text(
+                              isReallyOnline 
+                                ? 'Çevrimiçi'
+                                : lastActive != null 
+                                  ? 'Son görülme: ${_formatLastSeen(lastActive)}'
+                                  : 'Çevrimdışı',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -445,7 +452,12 @@ class _ChatPageState extends State<ChatPage> {
                         if (aTimestamp == null) return -1;
                         if (bTimestamp == null) return 1;
                         
-                        return aTimestamp.compareTo(bTimestamp);
+                        try {
+                          return aTimestamp.compareTo(bTimestamp);
+                        } catch (e) {
+                          print('Mesaj işleme hatası: $e');
+                          return 0;
+                        }
                       });
 
                       if (messages.isEmpty) {
@@ -485,10 +497,17 @@ class _ChatPageState extends State<ChatPage> {
                         itemBuilder: (context, index) {
                           final message = messages[index].data() as Map<String, dynamic>;
                           final isMe = message['senderId'] == _auth.currentUser?.uid;
-                          final timestamp = message['timestamp'] as Timestamp?;
-                          final time = timestamp != null
-                              ? DateFormat('HH:mm').format(timestamp.toDate())
-                              : '';
+                          final timestamp = message['timestamp'];
+                          String time = '';
+                          
+                          try {
+                            if (timestamp != null && timestamp is Timestamp) {
+                              time = DateFormat('HH:mm').format(timestamp.toDate());
+                            }
+                          } catch (e) {
+                            print('Timestamp format hatası: $e');
+                            time = '';
+                          }
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),

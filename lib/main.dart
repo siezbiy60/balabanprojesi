@@ -52,6 +52,9 @@ void main() async {
 
   // MatchingService'i başlat - eski kayıtları temizle
   await MatchingService.initialize();
+  
+  // OnlineStatusService'i başlat
+  await OnlineStatusService.setOnline();
 
   // Bildirimlerin foreground'da da gösterilmesi için ayar
   await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
@@ -321,11 +324,7 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    // İkinci MaterialApp'ı kaldır, sadece ana widget'ı döndür
-    // Örneğin:
-    // return HomePage();
-    // veya ana sayfan neyse onu döndür
-    return HomePage();
+    return AuthWrapper();
   }
 }
 
@@ -340,26 +339,13 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
-        if (snapshot.hasData) {
-          final user = snapshot.data!;
-          if (user.emailVerified) {
-            return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                }
-                if (snapshot.hasData && snapshot.data!.exists) {
-                  return HomePage();
-                }
-                return ProfileSetupPage();
-              },
-            );
-          } else {
-            return LoginPage();
-          }
+        // Kullanıcı giriş yapmışsa HomePage'e yönlendir
+        if (snapshot.hasData && snapshot.data != null) {
+          return const HomePage();
         }
-        return LoginPage();
+        
+        // Kullanıcı giriş yapmamışsa LoginPage'e yönlendir
+        return const LoginPage();
       },
     );
   }

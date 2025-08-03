@@ -2,37 +2,61 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'chat_page.dart';
 import 'user_profile_page.dart';
 
-class OnlineUsersPage extends StatefulWidget {
-  const OnlineUsersPage({super.key});
+class MostActiveUsersPage extends StatefulWidget {
+  const MostActiveUsersPage({super.key});
 
   @override
-  State<OnlineUsersPage> createState() => _OnlineUsersPageState();
+  State<MostActiveUsersPage> createState() => _MostActiveUsersPageState();
 }
 
-class _OnlineUsersPageState extends State<OnlineUsersPage> {
+class _MostActiveUsersPageState extends State<MostActiveUsersPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
-  @override
-  void initState() {
-    super.initState();
-  }
 
+  Stream<List<Map<String, dynamic>>> _getMostActiveUsersStream() {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      return Stream.value([]);
+    }
 
-
-  Future<void> _startChat(String userId, String userName) async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatPage(
-          receiverId: userId,
-          receiverName: userName,
-        ),
-      ),
-    );
+    // Tüm kullanıcıları getir (online/offline fark etmez)
+    // Önce totalActiveTime'a göre sıralamayı dene, yoksa tüm kullanıcıları getir
+    return _firestore
+        .collection('users')
+        .limit(50) // Daha fazla kullanıcı getir sonra client-side sırala
+        .snapshots()
+        .map((snapshot) {
+          print('🔄 En aktif kullanıcılar güncellendi: ${snapshot.docs.length} kullanıcı');
+          
+          final users = <Map<String, dynamic>>[];
+          for (final doc in snapshot.docs) {
+            final userData = doc.data();
+            
+            // Kendimizi listeden çıkar
+            if (doc.id != currentUser.uid) {
+              // totalActiveTime yoksa 0 olarak varsay
+              final totalActiveTime = userData['totalActiveTime'] as int? ?? 0;
+              
+              users.add({
+                'id': doc.id,
+                'totalActiveTime': totalActiveTime,
+                ...userData,
+              });
+            }
+          }
+          
+          // Client-side'da totalActiveTime'a göre tekrar sırala (güvenlik için)
+          users.sort((a, b) {
+            final timeA = a['totalActiveTime'] as int? ?? 0;
+            final timeB = b['totalActiveTime'] as int? ?? 0;
+            return timeB.compareTo(timeA); // Büyükten küçüğe
+          });
+          
+          // En aktif 20 kullanıcıyı al
+          return users.take(20).toList();
+        });
   }
 
   void _viewProfile(String userId) {
@@ -44,45 +68,26 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
     );
   }
 
-  Stream<List<Map<String, dynamic>>> _getOnlineUsersStream() {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      return Stream.value([]);
-    }
-
-    // Son 5 dakika içinde aktif olanları real-time dinle
-    final fiveMinutesAgo = DateTime.now().subtract(Duration(minutes: 5));
-    final fiveMinutesAgoTimestamp = Timestamp.fromDate(fiveMinutesAgo);
+  String _formatActiveTime(int? totalMinutes) {
+    if (totalMinutes == null || totalMinutes == 0) return 'Yeni kullanıcı';
     
-    // Geçici: Index oluşturulana kadar basit query kullan
-    return _firestore
-        .collection('users')
-        .where('isOnline', isEqualTo: true)
-        .snapshots()
-        .map((snapshot) {
-          print('🔄 Çevrim içi kullanıcılar güncellendi: ${snapshot.docs.length} kullanıcı');
-          
-          final users = <Map<String, dynamic>>[];
-          for (final doc in snapshot.docs) {
-            final userData = doc.data();
-            
-            // Son 5 dakika içinde aktif mi kontrol et (client-side)
-            final lastActive = userData['lastActive'] as Timestamp?;
-            if (lastActive != null) {
-              final lastActiveTime = lastActive.toDate();
-              final isRecentlyActive = DateTime.now().difference(lastActiveTime).inMinutes <= 5;
-              
-              // Kendimizi listeden çıkar ve son 5 dakika içinde aktif olanları al
-              if (doc.id != currentUser.uid && isRecentlyActive) {
-                users.add({
-                  'id': doc.id,
-                  ...userData,
-                });
-              }
-            }
-          }
-          return users;
-        });
+    if (totalMinutes < 60) {
+      return '${totalMinutes} dakika';
+    } else if (totalMinutes < 1440) { // 24 saat
+      final hours = totalMinutes ~/ 60;
+      final remainingMinutes = totalMinutes % 60;
+      if (remainingMinutes > 0) {
+        return '${hours}sa ${remainingMinutes}dk';
+      }
+      return '${hours} saat';
+    } else {
+      final days = totalMinutes ~/ 1440;
+      final remainingHours = (totalMinutes % 1440) ~/ 60;
+      if (remainingHours > 0) {
+        return '${days}g ${remainingHours}sa';
+      }
+      return '${days} gün';
+    }
   }
 
   @override
@@ -98,7 +103,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                Icons.people_rounded,
+                Icons.trending_up,
                 color: Theme.of(context).colorScheme.onPrimary,
                 size: 24,
               ),
@@ -106,7 +111,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Çevrimiçi Kullanıcılar',
+                'En Aktif Kullanıcılar',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onPrimary,
                   fontSize: 20,
@@ -117,7 +122,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
             ),
             // Kullanıcı sayısını göster
             StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _getOnlineUsersStream(),
+              stream: _getMostActiveUsersStream(),
               builder: (context, snapshot) {
                 final count = snapshot.data?.length ?? 0;
                 if (count == 0) return SizedBox.shrink();
@@ -151,10 +156,10 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
       ),
       backgroundColor: Theme.of(context).colorScheme.background,
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _getOnlineUsersStream(),
+        stream: _getMostActiveUsersStream(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            print('❌ Çevrim içi kullanıcılar hatası: ${snapshot.error}');
+            print('❌ En aktif kullanıcılar hatası: ${snapshot.error}');
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -162,7 +167,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                   Icon(Icons.error, color: Theme.of(context).colorScheme.error, size: 48),
                   SizedBox(height: 16),
                   Text(
-                    'Çevrim içi kullanıcılar yüklenirken hata oluştu',
+                    'En aktif kullanıcılar yüklenirken hata oluştu',
                     style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ],
@@ -180,7 +185,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Çevrimiçi kullanıcılar yükleniyor...',
+                    'En aktif kullanıcılar yükleniyor...',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontSize: 16,
@@ -191,9 +196,9 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
             );
           }
 
-          final onlineUsers = snapshot.data ?? [];
+          final activeUsers = snapshot.data ?? [];
 
-          if (onlineUsers.isEmpty) {
+          if (activeUsers.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -213,14 +218,14 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                       ],
                     ),
                     child: Icon(
-                      Icons.people_outline,
+                      Icons.trending_up,
                       size: 64,
                       color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
                     ),
                   ),
                   SizedBox(height: 24),
                   Text(
-                    'Şu anda çevrimiçi kullanıcı yok',
+                    'Henüz aktif kullanıcı yok',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -229,7 +234,7 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Diğer kullanıcılar çevrimiçi olduğunda\nburada görünecekler',
+                    'Kullanıcılar aktif oldukça burada görünecekler',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -243,13 +248,12 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
 
           return ListView.builder(
             padding: EdgeInsets.all(16),
-            itemCount: onlineUsers.length,
+            itemCount: activeUsers.length,
             itemBuilder: (context, index) {
-              final user = onlineUsers[index];
+              final user = activeUsers[index];
               final userName = user['name'] as String? ?? 'Bilinmeyen Kullanıcı';
               final userImage = user['profileImageUrl'] as String?;
-              final lastActive = user['lastActive'] as Timestamp?;
-              final isOnline = user['isOnline'] as bool? ?? false;
+              final totalActiveTime = user['totalActiveTime'] as int?;
 
               return Container(
                 margin: EdgeInsets.only(bottom: 12),
@@ -274,8 +278,32 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                 ),
                 child: ListTile(
                   contentPadding: EdgeInsets.all(16),
-                  leading: Stack(
+                  leading: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Sıralama numarası
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: index < 3 
+                              ? (index == 0 ? Colors.amber : index == 1 ? Colors.grey.shade400 : Colors.brown.shade400)
+                              : Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: index < 3 ? Colors.white : Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      // Profil fotoğrafı
                       Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
@@ -306,23 +334,6 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                               : null,
                         ),
                       ),
-                      if (isOnline)
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            width: 16,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.surface,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                   title: Text(
@@ -334,47 +345,26 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
                     ),
                   ),
                   subtitle: Text(
-                    isOnline ? 'Çevrimiçi' : 'Son görülme: ${_formatLastSeen(lastActive)}',
+                    'Toplam aktif süre: ${_formatActiveTime(totalActiveTime)}',
                     style: TextStyle(
                       fontSize: 14,
-                      color: isOnline ? Colors.green.shade600 : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.chat_bubble_outline,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 24,
-                          ),
-                          onPressed: () => _startChat(user['id'], userName),
-                          tooltip: 'Mesaj Gönder',
-                        ),
+                  trailing: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.person_outline,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 24,
                       ),
-                      SizedBox(width: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.person_outline,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 24,
-                          ),
-                          onPressed: () => _viewProfile(user['id']),
-                          tooltip: 'Profili Görüntüle',
-                        ),
-                      ),
-                    ],
+                      onPressed: () => _viewProfile(user['id']),
+                      tooltip: 'Profili Görüntüle',
+                    ),
                   ),
                 ),
               );
@@ -384,22 +374,4 @@ class _OnlineUsersPageState extends State<OnlineUsersPage> {
       ),
     );
   }
-
-  String _formatLastSeen(Timestamp? timestamp) {
-    if (timestamp == null) return 'Bilinmiyor';
-    
-    final now = DateTime.now();
-    final lastSeen = timestamp.toDate();
-    final difference = now.difference(lastSeen);
-    
-    if (difference.inMinutes < 1) {
-      return 'Az önce';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} dakika önce';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} saat önce';
-    } else {
-      return '${difference.inDays} gün önce';
-    }
-  }
-} 
+}

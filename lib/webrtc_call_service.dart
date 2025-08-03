@@ -14,6 +14,10 @@ class WebRTCCallService {
   Function()? onCallEnded; // Arama sonlandığında çağrılacak callback
   RTCRtpSender? _audioSender;
   bool _isMicEnabled = true;
+  
+  // ICE candidate kuyruğu
+  List<Map<String, dynamic>> _iceCandidateQueue = [];
+  bool _remoteDescriptionSet = false;
 
   // PeerConnection ve mikrofonu başlat
   Future<String> startCall(String receiverId) async {
@@ -34,47 +38,63 @@ class WebRTCCallService {
       'sdpSemantics': 'unified-plan',
     });
 
-    // Mikrofonu aç - Gelişmiş audio constraints
-    _localStream = await navigator.mediaDevices.getUserMedia({
-      'audio': {
-        'echoCancellation': true,
-        'noiseSuppression': true,
-        'autoGainControl': true,
-        'sampleRate': 48000,
-        'channelCount': 1,
-      },
-      'video': false,
-    });
-    
-    print('🎤 Audio tracks (startCall): ${_localStream!.getAudioTracks()}');
-    for (var track in _localStream!.getAudioTracks()) {
-      _audioSender = await _peerConnection!.addTrack(track, _localStream!);
-    }
-    print('🎤 Senders (startCall): ${_peerConnection!.getSenders()}');
+         // Mikrofonu aç - Gelişmiş audio constraints
+     _localStream = await navigator.mediaDevices.getUserMedia({
+       'audio': {
+         'echoCancellation': true,
+         'noiseSuppression': true,
+         'autoGainControl': true,
+         'sampleRate': 48000,
+         'channelCount': 1,
+       },
+       'video': false,
+     });
+     
+     print('🎤 Audio tracks (startCall): ${_localStream!.getAudioTracks()}');
+     
+     // Audio track'leri ekle
+     for (var track in _localStream!.getAudioTracks()) {
+       print('🎤 Track ekleniyor: ${track.id}');
+       _audioSender = await _peerConnection!.addTrack(track, _localStream!);
+       print('🎤 Track eklendi: ${track.id}');
+     }
+     
+     print('🎤 Senders (startCall): ${_peerConnection!.getSenders()}');
 
     // Remote stream geldiğinde callback
     _peerConnection!.onTrack = (event) {
+      print('🎧 onTrack event tetiklendi (startCall)');
+      print('🎧 Streams sayısı: ${event.streams.length}');
+      print('🎧 Track ID: ${event.track?.id}');
+      print('🎧 Track kind: ${event.track?.kind}');
+      
       if (event.streams.isNotEmpty && onRemoteStream != null) {
+        print('🎧 Remote stream callback çağrılıyor (startCall)');
         onRemoteStream!(event.streams[0]);
+      } else {
+        print('🎧 Remote stream callback çağrılmadı - streams boş veya callback null');
       }
     };
 
     // ICE Candidate Firestore'a yaz
     _peerConnection!.onIceCandidate = (candidate) {
-      _firestore.collection('calls').doc(_callId).collection('candidates').add(candidate.toMap());
+      if (_callId != null) {
+        _firestore.collection('calls').doc(_callId).collection('candidates').add(candidate.toMap());
+      }
     };
 
     // SDP Offer oluştur
     RTCSessionDescription offer = await _peerConnection!.createOffer();
     await _peerConnection!.setLocalDescription(offer);
 
-    // Firestore'a arama dokümanı yaz
-    await _firestore.collection('calls').doc(_callId).set({
-      'callerId': user.uid,
-      'receiverId': receiverId,
-      'status': 'calling',
-      'offer': offer.toMap(),
-    });
+         // Firestore'a arama dokümanı yaz
+     await _firestore.collection('calls').doc(_callId).set({
+       'callerId': user.uid,
+       'receiverId': receiverId,
+       'status': 'calling',
+       'offer': offer.toMap(),
+       'createdAt': FieldValue.serverTimestamp(),
+     });
     return _callId!;
   }
 
@@ -117,8 +137,16 @@ class WebRTCCallService {
 
     // Remote stream geldiğinde callback
     _peerConnection!.onTrack = (event) {
+      print('🎧 onTrack event tetiklendi (answerCall)');
+      print('🎧 Streams sayısı: ${event.streams.length}');
+      print('🎧 Track ID: ${event.track?.id}');
+      print('🎧 Track kind: ${event.track?.kind}');
+      
       if (event.streams.isNotEmpty && onRemoteStream != null) {
+        print('🎧 Remote stream callback çağrılıyor (answerCall)');
         onRemoteStream!(event.streams[0]);
+      } else {
+        print('🎧 Remote stream callback çağrılmadı - streams boş veya callback null');
       }
     };
 
@@ -131,6 +159,11 @@ class WebRTCCallService {
     DocumentSnapshot callDoc = await _firestore.collection('calls').doc(_callId).get();
     var offer = callDoc['offer'];
     await _peerConnection!.setRemoteDescription(RTCSessionDescription(offer['sdp'], offer['type']));
+    print('✅ Remote description set edildi (offer)');
+    _remoteDescriptionSet = true;
+    
+    // Kuyruktaki ICE candidate'ları işle
+    _processIceCandidateQueue();
 
     // Answer oluştur
     RTCSessionDescription answer = await _peerConnection!.createAnswer();
@@ -177,23 +210,40 @@ class WebRTCCallService {
           return;
         }
         
-        // Answer geldiğinde peer'a uygula
-        if (data['answer'] != null && _peerConnection?.signalingState != RTCSignalingState.RTCSignalingStateStable) {
-          var answer = data['answer'];
-          await _peerConnection!.setRemoteDescription(RTCSessionDescription(answer['sdp'], answer['type']));
-        }
+                 // Answer geldiğinde peer'a uygula
+         if (data['answer'] != null && _peerConnection?.signalingState != RTCSignalingState.RTCSignalingStateStable) {
+           var answer = data['answer'];
+           await _peerConnection!.setRemoteDescription(RTCSessionDescription(answer['sdp'], answer['type']));
+           print('✅ Remote description set edildi (answer)');
+           _remoteDescriptionSet = true;
+           
+           // Kuyruktaki ICE candidate'ları işle
+           _processIceCandidateQueue();
+         }
       }
     });
     
-    // ICE candidate'ları uygula
-    _firestore.collection('calls').doc(_callId).collection('candidates').snapshots().listen((snapshot) {
-      for (var doc in snapshot.docChanges) {
-        var data = doc.doc.data();
-        if (data != null) {
-          _peerConnection?.addCandidate(RTCIceCandidate(data['candidate'], data['sdpMid'], data['sdpMLineIndex']));
+                   // ICE candidate'ları uygula
+      _firestore.collection('calls').doc(_callId).collection('candidates').snapshots().listen((snapshot) {
+        for (var doc in snapshot.docChanges) {
+          var data = doc.doc.data();
+          if (data != null && _peerConnection != null) {
+            try {
+              // Remote description set edilmiş mi kontrol et
+              if (_remoteDescriptionSet) {
+                _peerConnection!.addCandidate(RTCIceCandidate(data['candidate'], data['sdpMid'], data['sdpMLineIndex']));
+                print('✅ ICE candidate eklendi (remote description set)');
+              } else {
+                // Remote description henüz set edilmemişse, kuyruğa ekle
+                print('📞 Remote description henüz set edilmemiş, ICE candidate kuyruğa ekleniyor');
+                _iceCandidateQueue.add(data);
+              }
+            } catch (e) {
+              print('❌ ICE candidate ekleme hatası: $e');
+            }
+          }
         }
-      }
-    });
+      });
   }
 
   // Çağrıyı bitir
@@ -316,6 +366,27 @@ class WebRTCCallService {
   bool get isMicEnabled => _isMicEnabled;
 
   MediaStream? get localStream => _localStream;
+  
+  // Kuyruktaki ICE candidate'ları işle
+  void _processIceCandidateQueue() {
+    print('🔄 ICE candidate kuyruğu işleniyor (${_iceCandidateQueue.length} candidate)');
+    
+    for (var candidateData in _iceCandidateQueue) {
+      try {
+        _peerConnection!.addCandidate(RTCIceCandidate(
+          candidateData['candidate'], 
+          candidateData['sdpMid'], 
+          candidateData['sdpMLineIndex']
+        ));
+        print('✅ Kuyruktan ICE candidate eklendi');
+      } catch (e) {
+        print('❌ Kuyruktan ICE candidate ekleme hatası: $e');
+      }
+    }
+    
+    _iceCandidateQueue.clear();
+    print('🔄 ICE candidate kuyruğu temizlendi');
+  }
 
   // Eşleştirme araması için özel fonksiyon (calls koleksiyonu kullanmaz)
   Future<void> startMatchingCall(String otherUserId, {required bool isCaller, required String callId}) async {

@@ -42,17 +42,20 @@ service cloud.firestore {
 
     // Sesli arama belgeleri (calls) - WebRTC signaling için optimize edildi
     match /calls/{callId} {
-      // Sadece arama ile ilgili kullanıcılar okuyabilir/yazabilir
+      // Call ID'de yer alan kullanıcılar okuyabilir/yazabilir
       allow read, write: if request.auth != null &&
-        (request.auth.uid == resource.data.callerId || 
+        (request.auth.uid in callId.split('_') || 
+         request.auth.uid == resource.data.callerId || 
          request.auth.uid == resource.data.receiverId);
       // Yeni arama oluşturma - arayan kişi oluşturabilir
       allow create: if request.auth != null &&
-        request.auth.uid == request.resource.data.callerId;
+        (request.auth.uid in callId.split('_') || 
+         request.auth.uid == request.resource.data.callerId);
       // WebRTC ICE candidate signaling
       match /candidates/{candidateId} {
         allow read, write: if request.auth != null &&
-          (request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.callerId ||
+          (request.auth.uid in callId.split('_') || 
+           request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.callerId ||
            request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.receiverId);
       }
     }
@@ -122,6 +125,32 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow create: if request.auth != null;
       allow read, update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Yorumlar (comments) koleksiyonu
+    match /comments/{commentId} {
+      // Tüm kullanıcılar yorumları okuyabilir
+      allow read: if request.auth != null;
+      
+      // Giriş yapmış kullanıcılar yorum ekleyebilir
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      
+      // Yorum sahibi yorumunu güncelleyebilir (düzenleme için)
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId &&
+        (
+          // Sadece content, edited, editedAt alanları güncellenebilir
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'edited', 'editedAt']) ||
+          // Veya likes alanı (beğeni için)
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) ||
+          // Veya isDeleted alanı (silme için)
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isDeleted'])
+        );
+      
+      // Yorum sahibi yorumunu silebilir
+      allow delete: if request.auth != null && 
         request.auth.uid == resource.data.userId;
     }
 

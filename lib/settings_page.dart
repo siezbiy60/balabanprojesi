@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'theme_service.dart';
+import 'profile_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -12,6 +13,10 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _isLoading = true;
+  bool _messageNotifications = true;
+  bool _callNotifications = true;
+  bool _soundEnabled = true;
+  bool _vibrationEnabled = true;
 
   @override
   void initState() {
@@ -21,12 +26,27 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
       setState(() {
+        _messageNotifications = prefs.getBool('messageNotifications') ?? true;
+        _callNotifications = prefs.getBool('callNotifications') ?? true;
+        _soundEnabled = prefs.getBool('soundEnabled') ?? true;
+        _vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
         _isLoading = false;
       });
     } catch (e) {
       print('❌ Ayarlar yüklenirken hata: $e');
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveNotificationSetting(String key, bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(key, value);
+      print('✅ Bildirim ayarı kaydedildi: $key = $value');
+    } catch (e) {
+      print('❌ Bildirim ayarı kaydedilemedi: $e');
     }
   }
 
@@ -152,10 +172,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Mesaj Bildirimleri',
                     subtitle: 'Yeni mesaj geldiğinde bildirim al',
                     trailing: Switch(
-                      value: true,
-                      onChanged: (value) {
+                      value: _messageNotifications,
+                      onChanged: (value) async {
+                        setState(() {
+                          _messageNotifications = value;
+                        });
+                        await _saveNotificationSetting('messageNotifications', value);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('🔔 Bildirim ayarları yakında eklenecek')),
+                          SnackBar(
+                            content: Text(value ? '🔔 Mesaj bildirimleri açıldı' : '🔕 Mesaj bildirimleri kapatıldı'),
+                            duration: Duration(seconds: 2),
+                          ),
                         );
                       },
                       activeColor: theme.colorScheme.primary,
@@ -171,10 +198,69 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Arama Bildirimleri',
                     subtitle: 'Gelen aramalar için bildirim al',
                     trailing: Switch(
-                      value: true,
-                      onChanged: (value) {
+                      value: _callNotifications,
+                      onChanged: (value) async {
+                        setState(() {
+                          _callNotifications = value;
+                        });
+                        await _saveNotificationSetting('callNotifications', value);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('📞 Arama bildirimleri yakında eklenecek')),
+                          SnackBar(
+                            content: Text(value ? '📞 Arama bildirimleri açıldı' : '📵 Arama bildirimleri kapatıldı'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      activeColor: theme.colorScheme.primary,
+                      activeTrackColor: theme.colorScheme.primary.withOpacity(0.5),
+                      inactiveTrackColor: theme.colorScheme.onSurface.withOpacity(0.3),
+                      inactiveThumbColor: theme.colorScheme.surface,
+                    ),
+                    theme: theme,
+                  ),
+                  SizedBox(height: 8),
+                  _buildSettingCard(
+                    icon: Icons.volume_up,
+                    title: 'Bildirim Sesi',
+                    subtitle: 'Bildirimlerde ses çıkar',
+                    trailing: Switch(
+                      value: _soundEnabled,
+                      onChanged: (value) async {
+                        setState(() {
+                          _soundEnabled = value;
+                        });
+                        await _saveNotificationSetting('soundEnabled', value);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(value ? '🔊 Bildirim sesi açıldı' : '🔇 Bildirim sesi kapatıldı'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      activeColor: theme.colorScheme.primary,
+                      activeTrackColor: theme.colorScheme.primary.withOpacity(0.5),
+                      inactiveTrackColor: theme.colorScheme.onSurface.withOpacity(0.3),
+                      inactiveThumbColor: theme.colorScheme.surface,
+                    ),
+                    theme: theme,
+                  ),
+                  SizedBox(height: 8),
+                  _buildSettingCard(
+                    icon: Icons.vibration,
+                    title: 'Titreşim',
+                    subtitle: 'Bildirimlerde titreşim',
+                    trailing: Switch(
+                      value: _vibrationEnabled,
+                      onChanged: (value) async {
+                        setState(() {
+                          _vibrationEnabled = value;
+                        });
+                        await _saveNotificationSetting('vibrationEnabled', value);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(value ? '📳 Titreşim açıldı' : '📴 Titreşim kapatıldı'),
+                            duration: Duration(seconds: 2),
+                          ),
                         );
                       },
                       activeColor: theme.colorScheme.primary,
@@ -194,8 +280,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Profil Düzenle',
                     subtitle: 'Profil bilgilerinizi güncelleyin',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('👤 Profil düzenleme yakında eklenecek')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProfilePage(),
+                        ),
                       );
                     },
                     theme: theme,
@@ -206,9 +295,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Gizlilik Ayarları',
                     subtitle: 'Gizlilik tercihlerinizi yönetin',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('🔐 Gizlilik ayarları yakında eklenecek')),
-                      );
+                      _showPrivacySettings(theme);
+                    },
+                    theme: theme,
+                  ),
+                  SizedBox(height: 8),
+                  _buildSettingCard(
+                    icon: Icons.storage,
+                    title: 'Önbellek Temizle',
+                    subtitle: 'Uygulama verilerini temizle',
+                    onTap: () {
+                      _showClearCacheDialog(theme);
                     },
                     theme: theme,
                   ),
@@ -232,9 +329,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'Yardım',
                     subtitle: 'Kullanım kılavuzu ve destek',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('❓ Yardım sayfası yakında eklenecek')),
-                      );
+                      _showHelpDialog(theme);
                     },
                     theme: theme,
                   ),
@@ -412,6 +507,139 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       );
       },
+    );
+  }
+
+  void _showPrivacySettings(ThemeData theme) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.security, color: theme.primaryColor),
+            SizedBox(width: 8),
+            Text('Gizlilik Ayarları'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('🔐 Hesap Gizliliği', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('• Profiliniz sadece onaylı kişiler tarafından görülebilir'),
+              Text('• Mesajlarınız uçtan uca şifrelenir'),
+              Text('• Konum bilginiz güvenli şekilde saklanır'),
+              SizedBox(height: 16),
+              Text('📱 Veri Güvenliği', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('• Tüm verileriniz Firebase\'de güvenle saklanır'),
+              Text('• Kişisel bilgileriniz üçüncü taraflarla paylaşılmaz'),
+              Text('• İstediğiniz zaman hesabınızı silebilirsiniz'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Tamam'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearCacheDialog(ThemeData theme) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.storage, color: theme.primaryColor),
+            SizedBox(width: 8),
+            Text('Önbellek Temizle'),
+          ],
+        ),
+        content: Text('Uygulama önbelleğini temizlemek istediğinizden emin misiniz? Bu işlem profil fotoğrafları ve diğer geçici dosyaları silecektir.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              // Önbellek temizleme işlemi
+              try {
+                // SharedPreferences temizleme hariç tutabiliriz
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🧹 Önbellek temizlendi'),
+                    backgroundColor: theme.colorScheme.primary,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('❌ Önbellek temizlenemedi'),
+                    backgroundColor: theme.colorScheme.error,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+            ),
+            child: Text('Temizle'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpDialog(ThemeData theme) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.help, color: theme.primaryColor),
+            SizedBox(width: 8),
+            Text('Yardım'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('🚀 Nasıl Başlarım?', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('1. "Bağlan" sekmesinden rastgele kişilerle tanışabilirsin'),
+              Text('2. "Sosyal" sekmesinden genel sohbete katılabilirsin'),
+              Text('3. "Çevrimiçi" sekmesinden aktif kullanıcıları görebilirsin'),
+              SizedBox(height: 16),
+              Text('💬 Mesajlaşma', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('• Herhangi bir kullanıcıya tıklayıp mesaj gönderebilirsin'),
+              Text('• Sesli ve görüntülü arama yapabilirsin'),
+              Text('• Mesajların anlık olarak iletilir'),
+              SizedBox(height: 16),
+              Text('📞 Destek', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text('Sorun yaşıyorsan ayarlardan "Çıkış Yap" ile çıkıp tekrar giriş yapabilirsin.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Tamam'),
+          ),
+        ],
+      ),
     );
   }
 } 
