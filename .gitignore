@@ -29,5 +29,10 @@ render.experimental.xml
 # Google Services (e.g. APIs or Firebase)
 google-services.json
 
+# Firebase Service Account Keys (Security Critical!)
+functions/serviceAccountKey.json
+**/serviceAccountKey.json
+**/*firebase-adminsdk*.json
+
 # Android Profiling
 *.hprof
